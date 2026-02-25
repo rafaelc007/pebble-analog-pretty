@@ -56,16 +56,6 @@ static int32_t degrees_to_trig_angle(int degrees) {
 }
 
 /**
- * Calculates a point on the clock face at a given angle and distance
- */
-static GPoint get_point_on_circle(int32_t angle, int distance_from_center) {
-  return (GPoint) {
-    .x = s_center.x + (int)(sin_lookup(angle) * distance_from_center / TRIG_MAX_RATIO),
-    .y = s_center.y - (int)(cos_lookup(angle) * distance_from_center / TRIG_MAX_RATIO)
-  };
-}
-
-/**
  * Calculates a point on an ellipse at a given angle
  */
 static GPoint get_point_on_ellipse(int32_t angle, int w_radius, int h_radius) {
@@ -74,6 +64,14 @@ static GPoint get_point_on_ellipse(int32_t angle, int w_radius, int h_radius) {
     .y = s_center.y - (int)(cos_lookup(angle) * h_radius / TRIG_MAX_RATIO)
   };
 }
+
+/**
+ * Calculates a point on the clock face at a given angle and distance
+ */
+static GPoint get_point_on_circle(int32_t angle, int distance_from_center) {
+  return get_point_on_ellipse(angle, distance_from_center, distance_from_center);
+}
+
 
 /**
  * Determines if an hour marker should be a major marker (12, 3, 6, 9)
@@ -111,7 +109,7 @@ static void draw_clock_face(GContext *ctx) {
   
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_context_set_stroke_width(ctx, CLOCK_FACE_STROKE_WIDTH);
-  graphics_draw_round_rect(ctx, clock_face, CLOCK_FACE_CORNER_RADIUS);
+  graphics_draw_round_rect(ctx, clock_face, s_radius);
 }
 
 /**
@@ -142,8 +140,9 @@ static void draw_hour_number(GContext *ctx, int hour_index) {
   
   int32_t angle = index_trig_angle(hour_index);
   
-  int number_distance = s_radius - MAJOR_MARKER_LENGTH - NUMBER_OFFSET_FROM_MARKER;
-  GPoint number_pos = get_point_on_circle(angle, number_distance);
+  int w_number_distance = s_w_radius - MAJOR_MARKER_LENGTH - NUMBER_OFFSET_FROM_MARKER;
+  int h_number_distance = s_h_radius - MAJOR_MARKER_LENGTH - NUMBER_OFFSET_FROM_MARKER;
+  GPoint number_pos = get_point_on_ellipse(angle, w_number_distance, h_number_distance);
   
   // Format number
   static char number_buffer[3];
