@@ -4,34 +4,23 @@
 // CONSTANTS
 // ============================================================================
 
-#define CLOCK_FACE_BORDER_PERCENT 0.01f
-#define CLOCK_FACE_CORNER_RADIUS 7
 #define CLOCK_FACE_STROKE_WIDTH 2
-
 #define MINUTE_MARKER_COUNT 60
-#define HOUR_MARKER_COUNT 12
 #define MAJOR_MARKER_INTERVAL 5
-#define MAJOR_MARKER_LENGTH 15
-#define MINOR_MARKER_LENGTH 8
+#define MAJOR_MARKER_LENGTH 12
+#define MINOR_MARKER_LENGTH 5
 #define MAJOR_MARKER_WIDTH 3
 #define MINOR_MARKER_WIDTH 1
-#define NUMBER_OFFSET_FROM_MARKER 10
+#define NUMBER_OFFSET_FROM_MARKER 12
 
 #define HOUR_HAND_LENGTH_RATIO 0.5f
 #define MINUTE_HAND_LENGTH_RATIO 0.75f
 #define SECOND_HAND_LENGTH_RATIO 0.85f
 
 #define HOUR_HAND_WIDTH 5
-#define MINUTE_HAND_WIDTH 5
-#define SECOND_HAND_WIDTH 1
-
-#define CENTER_DOT_RADIUS 5
-
-// #define DEGREES_PER_MINUTE  360 / MINUTE_MARKER_COUNT
-#define DEGREES_PER_HOUR 360 / HOUR_MARKER_COUNT
-#define DEGREES_PER_MINUTE 6
-#define DEGREES_PER_SECOND 6
-#define DEGREES_PER_MINUTE_FOR_HOUR_HAND 0.5f
+#define MINUTE_HAND_WIDTH 4
+#define SECOND_HAND_WIDTH 2
+#define CENTER_DOT_RADIUS 4
 
 // ============================================================================
 // GLOBAL STATE
@@ -48,273 +37,174 @@ static int s_h_radius;
 // UTILITY FUNCTIONS
 // ============================================================================
 
-/**
- * Converts degrees to Pebble's trigonometric angle format
- */
 static int32_t degrees_to_trig_angle(int degrees) {
   return TRIG_MAX_ANGLE * degrees / 360;
 }
 
 /**
- * Calculates a point on an ellipse at a given angle
+ * Calculates a point on a CIRCLE (Used for Round watches and Hands)
  */
-static GPoint get_point_on_ellipse(int32_t angle, int w_radius, int h_radius) {
+static GPoint get_point_on_circle(int32_t angle, int distance_from_center) {
   return (GPoint) {
-    .x = s_center.x + (int)(sin_lookup(angle) * w_radius / TRIG_MAX_RATIO),
-    .y = s_center.y - (int)(cos_lookup(angle) * h_radius / TRIG_MAX_RATIO)
+    .x = s_center.x + (int)(sin_lookup(angle) * distance_from_center / TRIG_MAX_RATIO),
+    .y = s_center.y - (int)(cos_lookup(angle) * distance_from_center / TRIG_MAX_RATIO)
   };
 }
 
 /**
- * Calculates a point on the clock face at a given angle and distance
+ * Calculates a point on a RECTANGLE (Used for Square watches)
  */
-static GPoint get_point_on_circle(int32_t angle, int distance_from_center) {
-  return get_point_on_ellipse(angle, distance_from_center, distance_from_center);
-}
+static GPoint get_point_on_rect(int32_t angle, int w_radius, int h_radius) {
+  int32_t sin = sin_lookup(angle);
+  int32_t cos = cos_lookup(angle);
+  int32_t abs_sin = sin > 0 ? sin : -sin;
+  int32_t abs_cos = cos > 0 ? cos : -cos;
 
+  int32_t scale;
+  if (abs_sin * h_radius > abs_cos * w_radius) {
+    scale = (int32_t)w_radius * TRIG_MAX_RATIO / abs_sin;
+  } else {
+    scale = (int32_t)h_radius * TRIG_MAX_RATIO / abs_cos;
+  }
+
+  return (GPoint) {
+    .x = s_center.x + (int)(sin * scale / TRIG_MAX_RATIO),
+    .y = s_center.y - (int)(cos * scale / TRIG_MAX_RATIO)
+  };
+}
 
 /**
- * Determines if an hour marker should be a major marker (12, 3, 6, 9)
+ * ADAPTIVE: Picks the correct point calculation based on screen shape
  */
-static bool is_major_marker(int hour_index) {
-  return (hour_index % MAJOR_MARKER_INTERVAL) == 0;
+static GPoint get_point_on_face(int32_t angle, int w_dist, int h_dist) {
+  #if defined(PBL_ROUND)
+    return get_point_on_circle(angle, w_dist); // Round watches use circle logic
+  #else
+    return get_point_on_rect(angle, w_dist, h_dist); // Square watches use rect logic
+  #endif
 }
 
-/**
- * Converts hour index (0-11) to display hour (1-12)
- */
-static int get_display_hour(int hour_index) {
-  return (hour_index == 0) ? 12 : hour_index / 5;
-}
-
-static int32_t index_trig_angle(int index) {
-  int angle_degrees = index * DEGREES_PER_MINUTE;
-  return degrees_to_trig_angle(angle_degrees);
-}
+static bool is_major_marker(int index) { return (index % MAJOR_MARKER_INTERVAL) == 0; }
+static int get_display_hour(int index) { return (index == 0) ? 12 : index / 5; }
 
 // ============================================================================
 // DRAWING FUNCTIONS
 // ============================================================================
 
-/**
- * Draws the clock face border
- */
 static void draw_clock_face(GContext *ctx) {
-  GRect clock_face = GRect(
-    s_center.x - s_w_radius,
-    s_center.y - s_h_radius,
-    2 * s_w_radius,
-    2 * s_h_radius
-  );
-  
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_context_set_stroke_width(ctx, CLOCK_FACE_STROKE_WIDTH);
-  graphics_draw_round_rect(ctx, clock_face, s_radius);
+
+  #if defined(PBL_ROUND)
+    // Draw a circle for round watches
+    graphics_draw_circle(ctx, s_center, s_radius);
+  #else
+    // Draw a rounded rectangle for square watches
+    GRect rect = GRect(s_center.x - s_w_radius, s_center.y - s_h_radius, 2 * s_w_radius, 2 * s_h_radius);
+    graphics_draw_round_rect(ctx, rect, 2);
+  #endif
 }
 
-/**
- * Draws a single hour marker
- */
-static void draw_hour_marker(GContext *ctx, int hour_index) {
-  int32_t angle = index_trig_angle(hour_index);
+static void draw_marker(GContext *ctx, int index) {
+  int32_t angle = degrees_to_trig_angle(index * 6);
+  bool is_major = is_major_marker(index);
+  int len = is_major ? MAJOR_MARKER_LENGTH : MINOR_MARKER_LENGTH;
   
-  bool is_major = is_major_marker(hour_index);
-  int marker_length = is_major ? MAJOR_MARKER_LENGTH : MINOR_MARKER_LENGTH;
-  int marker_width = is_major ? MAJOR_MARKER_WIDTH : MINOR_MARKER_WIDTH;
+  GPoint outer = get_point_on_face(angle, s_w_radius, s_h_radius);
+  GPoint inner = get_point_on_face(angle, s_w_radius - len, s_h_radius - len);
   
-  GPoint outer = get_point_on_ellipse(angle, s_w_radius, s_h_radius);
-  GPoint inner = get_point_on_ellipse(angle, s_w_radius - marker_length, s_h_radius - marker_length);
-  
-  graphics_context_set_stroke_color(ctx, GColorWhite);
-  graphics_context_set_stroke_width(ctx, marker_width);
+  graphics_context_set_stroke_width(ctx, is_major ? MAJOR_MARKER_WIDTH : MINOR_MARKER_WIDTH);
   graphics_draw_line(ctx, outer, inner);
 }
 
-/**
- * Draws hour numbers at major markers (12, 3, 6, 9)
- */
-static void draw_hour_number(GContext *ctx, int hour_index) {
-  if (!is_major_marker(hour_index)) {
-    return;
-  }
+static void draw_hour_number(GContext *ctx, int index) {
+  if (!is_major_marker(index)) return;
+  int32_t angle = degrees_to_trig_angle(index * 6);
   
-  int32_t angle = index_trig_angle(hour_index);
+  int offset = MAJOR_MARKER_LENGTH + NUMBER_OFFSET_FROM_MARKER;
+  GPoint pos = get_point_on_face(angle, s_w_radius - offset, s_h_radius - offset);
   
-  int w_number_distance = s_w_radius - MAJOR_MARKER_LENGTH - NUMBER_OFFSET_FROM_MARKER;
-  int h_number_distance = s_h_radius - MAJOR_MARKER_LENGTH - NUMBER_OFFSET_FROM_MARKER;
-  GPoint number_pos = get_point_on_ellipse(angle, w_number_distance, h_number_distance);
+  static char buffer[3];
+  snprintf(buffer, sizeof(buffer), "%d", get_display_hour(index));
   
-  // Format number
-  static char number_buffer[3];
-  snprintf(number_buffer, sizeof(number_buffer), "%d", get_display_hour(hour_index));
-  
-  // Calculate text dimensions for centering
-  GFont number_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
-  GSize text_size = graphics_text_layout_get_content_size(
-    number_buffer,
-    number_font,
-    GRect(0, 0, 30, 30),
-    GTextOverflowModeWordWrap,
-    GTextAlignmentCenter
-  );
-  
-  // Draw centered text
-  GRect text_rect = GRect(
-    number_pos.x - text_size.w / 2,
-    number_pos.y - text_size.h / 2,
-    text_size.w,
-    text_size.h
-  );
-  
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_draw_text(
-    ctx,
-    number_buffer,
-    number_font,
-    text_rect,
-    GTextOverflowModeWordWrap,
-    GTextAlignmentCenter,
-    NULL
-  );
+  GRect text_rect = GRect(pos.x - 15, pos.y - 12, 30, 24);
+  graphics_draw_text(ctx, buffer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), 
+                     text_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 }
 
-/**
- * Draws all hour markers and numbers
- */
-static void draw_hour_markers(GContext *ctx) {
+static void draw_all_markers(GContext *ctx) {
+  graphics_context_set_stroke_color(ctx, GColorWhite);
+  graphics_context_set_text_color(ctx, GColorWhite);
   for (int i = 0; i < MINUTE_MARKER_COUNT; i++) {
-    draw_hour_marker(ctx, i);
-    draw_hour_number(ctx, i);
+    draw_marker(ctx, i);
+    if (i % 5 == 0) draw_hour_number(ctx, i);
   }
 }
 
-/**
- * Draws a clock hand
- */
-static void draw_hand(GContext *ctx, int32_t angle, float length_ratio, int width, GColor color) {
-  GPoint hand_end = get_point_on_circle(angle, (int)(s_radius * length_ratio));
-  
-  graphics_context_set_stroke_width(ctx, width);
-  graphics_context_set_stroke_color(ctx, color);
-  graphics_draw_line(ctx, s_center, hand_end);
-}
-
-/**
- * Calculates and draws all clock hands based on current time
- */
 static void draw_clock_hands(GContext *ctx, struct tm *t) {
-  // Calculate angles
-  int hour_degrees = (t->tm_hour % 12) * DEGREES_PER_HOUR + 
-                     (int)(t->tm_min * DEGREES_PER_MINUTE_FOR_HOUR_HAND);
-  int minute_degrees = t->tm_min * DEGREES_PER_MINUTE;
-  int second_degrees = t->tm_sec * DEGREES_PER_SECOND;
+  int32_t h_angle = degrees_to_trig_angle((t->tm_hour % 12) * 30 + (t->tm_min / 2));
+  int32_t m_angle = degrees_to_trig_angle(t->tm_min * 6);
+  int32_t s_angle = degrees_to_trig_angle(t->tm_sec * 6);
+
+  // Hands are always drawn using circular logic for natural movement
+  GPoint h_end = get_point_on_circle(h_angle, s_radius * HOUR_HAND_LENGTH_RATIO);
+  GPoint m_end = get_point_on_circle(m_angle, s_radius * MINUTE_HAND_LENGTH_RATIO);
+  GPoint s_end = get_point_on_circle(s_angle, s_radius * SECOND_HAND_LENGTH_RATIO);
+
+  graphics_context_set_stroke_color(ctx, GColorWhite);
+  graphics_context_set_stroke_width(ctx, HOUR_HAND_WIDTH);
+  graphics_draw_line(ctx, s_center, h_end);
   
-  int32_t hour_angle = degrees_to_trig_angle(hour_degrees);
-  int32_t minute_angle = degrees_to_trig_angle(minute_degrees);
-  int32_t second_angle = degrees_to_trig_angle(second_degrees);
+  graphics_context_set_stroke_width(ctx, MINUTE_HAND_WIDTH);
+  graphics_draw_line(ctx, s_center, m_end);
   
-  // Draw hands (back to front)
-  draw_hand(ctx, hour_angle, HOUR_HAND_LENGTH_RATIO, HOUR_HAND_WIDTH, GColorWhite);
-  draw_hand(ctx, minute_angle, MINUTE_HAND_LENGTH_RATIO, MINUTE_HAND_WIDTH, GColorWhite);
-  draw_hand(ctx, second_angle, SECOND_HAND_LENGTH_RATIO, SECOND_HAND_WIDTH, GColorRed);
-  
-  // Draw center dot
+  graphics_context_set_stroke_color(ctx, GColorRed);
+  graphics_context_set_stroke_width(ctx, SECOND_HAND_WIDTH);
+  graphics_draw_line(ctx, s_center, s_end);
+
   graphics_context_set_fill_color(ctx, GColorWhite);
   graphics_fill_circle(ctx, s_center, CENTER_DOT_RADIUS);
 }
 
-/**
- * Initializes drawing dimensions based on layer bounds
- */
-static void calculate_dimensions(Layer *layer) {
+// ============================================================================
+// ENGINE
+// ============================================================================
+
+static void update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
   s_center = grect_center_point(&bounds);
-  
-  s_w_radius = (int)(bounds.size.w / 2 * (1 - CLOCK_FACE_BORDER_PERCENT));
-  s_h_radius = (int)(bounds.size.h / 2 * (1 - CLOCK_FACE_BORDER_PERCENT));
+  s_w_radius = (bounds.size.w / 2) - 2;
+  s_h_radius = (bounds.size.h / 2) - 2;
   s_radius = (s_w_radius < s_h_radius) ? s_w_radius : s_h_radius;
-}
 
-// ============================================================================
-// LAYER UPDATE CALLBACK
-// ============================================================================
-
-/**
- * Main update procedure for the canvas layer
- */
-static void update_proc(Layer *layer, GContext *ctx) {
-  calculate_dimensions(layer);
-  
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  
   draw_clock_face(ctx);
-  draw_hour_markers(ctx);
+  draw_all_markers(ctx);
   
   time_t now = time(NULL);
-  struct tm *t = localtime(&now);
-  draw_clock_hands(ctx, t);
+  draw_clock_hands(ctx, localtime(&now));
 }
 
-// ============================================================================
-// EVENT HANDLERS
-// ============================================================================
+static void tick_handler(struct tm *tick_time, TimeUnits units_changed) { layer_mark_dirty(s_canvas_layer); }
 
-/**
- * Called every second to update the display
- */
-static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
-  layer_mark_dirty(s_canvas_layer);
-}
-
-/**
- * Called when the main window is loaded
- */
 static void main_window_load(Window *window) {
-  Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_bounds(window_layer);
-  
-  s_canvas_layer = layer_create(bounds);
+  Layer *root = window_get_root_layer(window);
+  s_canvas_layer = layer_create(layer_get_bounds(root));
   layer_set_update_proc(s_canvas_layer, update_proc);
-  layer_add_child(window_layer, s_canvas_layer);
+  layer_add_child(root, s_canvas_layer);
 }
 
-/**
- * Called when the main window is unloaded
- */
-static void main_window_unload(Window *window) {
-  layer_destroy(s_canvas_layer);
-}
+static void main_window_unload(Window *window) { layer_destroy(s_canvas_layer); }
 
-// ============================================================================
-// LIFECYCLE FUNCTIONS
-// ============================================================================
-
-/**
- * Initializes the application
- */
 static void init(void) {
   s_main_window = window_create();
   window_set_background_color(s_main_window, GColorBlack);
-  
-  window_set_window_handlers(s_main_window, (WindowHandlers) {
-    .load = main_window_load,
-    .unload = main_window_unload
-  });
-  
+  window_set_window_handlers(s_main_window, (WindowHandlers) {.load = main_window_load, .unload = main_window_unload});
   window_stack_push(s_main_window, true);
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
 }
 
-/**
- * Cleans up resources on exit
- */
-static void deinit(void) {
-  window_destroy(s_main_window);
-}
+static void deinit(void) { window_destroy(s_main_window); }
 
-/**
- * Application entry point
- */
 int main(void) {
   init();
   app_event_loop();
