@@ -8,8 +8,9 @@
 #define CLOCK_FACE_CORNER_RADIUS 7
 #define CLOCK_FACE_STROKE_WIDTH 2
 
+#define MINUTE_MARKER_COUNT 60
 #define HOUR_MARKER_COUNT 12
-#define MAJOR_MARKER_INTERVAL 3
+#define MAJOR_MARKER_INTERVAL 5
 #define MAJOR_MARKER_LENGTH 15
 #define MINOR_MARKER_LENGTH 8
 #define MAJOR_MARKER_WIDTH 3
@@ -21,12 +22,13 @@
 #define SECOND_HAND_LENGTH_RATIO 0.85f
 
 #define HOUR_HAND_WIDTH 5
-#define MINUTE_HAND_WIDTH 3
+#define MINUTE_HAND_WIDTH 5
 #define SECOND_HAND_WIDTH 1
 
 #define CENTER_DOT_RADIUS 5
 
-#define DEGREES_PER_HOUR 30
+// #define DEGREES_PER_MINUTE  360 / MINUTE_MARKER_COUNT
+#define DEGREES_PER_HOUR 360 / HOUR_MARKER_COUNT
 #define DEGREES_PER_MINUTE 6
 #define DEGREES_PER_SECOND 6
 #define DEGREES_PER_MINUTE_FOR_HOUR_HAND 0.5f
@@ -84,7 +86,12 @@ static bool is_major_marker(int hour_index) {
  * Converts hour index (0-11) to display hour (1-12)
  */
 static int get_display_hour(int hour_index) {
-  return (hour_index == 0) ? 12 : hour_index;
+  return (hour_index == 0) ? 12 : hour_index / 5;
+}
+
+static int32_t index_trig_angle(int index) {
+  int angle_degrees = index * DEGREES_PER_MINUTE;
+  return degrees_to_trig_angle(angle_degrees);
 }
 
 // ============================================================================
@@ -111,8 +118,7 @@ static void draw_clock_face(GContext *ctx) {
  * Draws a single hour marker
  */
 static void draw_hour_marker(GContext *ctx, int hour_index) {
-  int angle_degrees = hour_index * DEGREES_PER_HOUR;
-  int32_t angle = degrees_to_trig_angle(angle_degrees);
+  int32_t angle = index_trig_angle(hour_index);
   
   bool is_major = is_major_marker(hour_index);
   int marker_length = is_major ? MAJOR_MARKER_LENGTH : MINOR_MARKER_LENGTH;
@@ -134,8 +140,7 @@ static void draw_hour_number(GContext *ctx, int hour_index) {
     return;
   }
   
-  int angle_degrees = hour_index * DEGREES_PER_HOUR;
-  int32_t angle = degrees_to_trig_angle(angle_degrees);
+  int32_t angle = index_trig_angle(hour_index);
   
   int number_distance = s_radius - MAJOR_MARKER_LENGTH - NUMBER_OFFSET_FROM_MARKER;
   GPoint number_pos = get_point_on_circle(angle, number_distance);
@@ -145,7 +150,7 @@ static void draw_hour_number(GContext *ctx, int hour_index) {
   snprintf(number_buffer, sizeof(number_buffer), "%d", get_display_hour(hour_index));
   
   // Calculate text dimensions for centering
-  GFont number_font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+  GFont number_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
   GSize text_size = graphics_text_layout_get_content_size(
     number_buffer,
     number_font,
@@ -162,7 +167,7 @@ static void draw_hour_number(GContext *ctx, int hour_index) {
     text_size.h
   );
   
-  graphics_context_set_text_color(ctx, GColorWhite);
+  graphics_context_set_fill_color(ctx, GColorWhite);
   graphics_draw_text(
     ctx,
     number_buffer,
@@ -178,7 +183,7 @@ static void draw_hour_number(GContext *ctx, int hour_index) {
  * Draws all hour markers and numbers
  */
 static void draw_hour_markers(GContext *ctx) {
-  for (int i = 0; i < HOUR_MARKER_COUNT; i++) {
+  for (int i = 0; i < MINUTE_MARKER_COUNT; i++) {
     draw_hour_marker(ctx, i);
     draw_hour_number(ctx, i);
   }
