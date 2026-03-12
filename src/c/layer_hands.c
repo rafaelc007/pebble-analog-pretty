@@ -43,17 +43,24 @@ static void draw_date_widget(GContext *ctx, struct tm *t) {
 }
 
 static void draw_clock_hands(GContext *ctx, struct tm *t) {
+  static uint8_t hour_thickness = HOUR_HAND_WIDTH / 2;
   int32_t h_angle = degrees_to_trig_angle((t->tm_hour % 12) * 30 + (t->tm_min / 2));
   int32_t m_angle = degrees_to_trig_angle(t->tm_min * 6);
   GPoint  h_end   = get_point_on_circle(h_angle, s_radius * HOUR_HAND_LENGTH_RATIO);
   GPoint  m_end   = get_point_on_circle(m_angle, s_radius * MINUTE_HAND_LENGTH_RATIO);
+  GPoint  h_short = get_point_on_circle(h_angle, s_radius * HOUR_HAND_LENGTH_RATIO - hour_thickness);
 
-  // Draw hour hand
+  // Draw hour hand in two passes
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_context_set_stroke_width(ctx, HOUR_HAND_WIDTH);
   graphics_draw_line(ctx, s_center, h_end);
 
+  graphics_context_set_stroke_color(ctx, GColorBlack);
+  graphics_context_set_stroke_width(ctx, HOUR_HAND_WIDTH - hour_thickness);
+  graphics_draw_line(ctx, s_center, h_short);
+
   // Draw minute hand
+  graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_context_set_stroke_width(ctx, MINUTE_HAND_WIDTH);
   graphics_draw_line(ctx, s_center, m_end);
 

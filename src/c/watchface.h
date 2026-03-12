@@ -16,11 +16,11 @@
 #define DATE_OFFSET_FROM_CENTER    40
 #define SQR_WATCHFACE_RADIOUS      30
 
-#define HOUR_HAND_LENGTH_RATIO     0.60f
+#define HOUR_HAND_LENGTH_RATIO     0.50f
 #define MINUTE_HAND_LENGTH_RATIO   0.85f
 
-#define HOUR_HAND_WIDTH            5
-#define MINUTE_HAND_WIDTH          4
+#define HOUR_HAND_WIDTH           14
+#define MINUTE_HAND_WIDTH          6
 #define CENTER_DOT_RADIUS          6
 
 // Seconds hand — only shown on shake
