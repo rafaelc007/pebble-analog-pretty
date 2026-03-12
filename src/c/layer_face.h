@@ -8,3 +8,6 @@ Layer* face_layer_create(GRect bounds, Layer *parent);
 
 // Destroys the face layer — call from main_window_unload
 void face_layer_destroy(void);
+
+// Returns true if the face layer was marked dirty
+bool face_layer_update_hour(int current_hour);

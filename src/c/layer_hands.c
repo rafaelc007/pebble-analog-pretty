@@ -1,5 +1,6 @@
 #include "layer_hands.h"
 #include "watchface.h"
+#include "layer_face.h"
 
 // ============================================================================
 // PRIVATE STATE
@@ -35,9 +36,9 @@ static void draw_date_widget(GContext *ctx, struct tm *t) {
   GPoint  pos         = get_point_on_face(angle, date_dist_w, date_dist_h);
   static char date_buffer[3];
   snprintf(date_buffer, sizeof(date_buffer), "%d", t->tm_mday);
-  graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(GColorBlue, GColorWhite));
-  GRect text_rect = GRect(pos.x - 15, pos.y - 12, 30, 24);
-  graphics_draw_text(ctx, date_buffer, s_font,
+  graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(WATCHFACE_THEME_COLOR, GColorWhite));
+  GRect text_rect = GRect(s_center.x - 19, s_center.y + (s_radius / 2) - NUMBER_OFFSET_FROM_MARKER - 15, 38, 30);
+  graphics_draw_text(ctx, date_buffer, date_font,
                      text_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 }
 
@@ -60,14 +61,16 @@ static void draw_clock_hands(GContext *ctx, struct tm *t) {
   if (s_show_seconds) {
     int32_t s_angle = degrees_to_trig_angle(t->tm_sec * 6);
     GPoint  s_end   = get_point_on_circle(s_angle, s_radius * SECOND_HAND_LENGTH_RATIO);
-    graphics_context_set_stroke_color(ctx, GColorRed);
+    graphics_context_set_stroke_color(ctx, WATCHFACE_THEME_COLOR);
     graphics_context_set_stroke_width(ctx, SECOND_HAND_WIDTH);
     graphics_draw_line(ctx, s_center, s_end);
   }
 
   // Center dot drawn last so it sits on top of all hands
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_circle(ctx, s_center, CENTER_DOT_RADIUS);
+  graphics_context_set_stroke_color(ctx, GColorBlack);
+  graphics_draw_circle(ctx, s_center, CENTER_DOT_RADIUS);
+  graphics_context_set_fill_color(ctx, WATCHFACE_THEME_COLOR);
+  graphics_fill_circle(ctx, s_center, CENTER_DOT_RADIUS - 2);
 }
 
 // ============================================================================
@@ -77,6 +80,8 @@ static void draw_clock_hands(GContext *ctx, struct tm *t) {
 static void hands_update_proc(Layer *layer, GContext *ctx) {
   time_t    now = time(NULL);
   struct tm *t  = localtime(&now);
+
+  face_layer_update_hour(t->tm_hour);
   draw_date_widget(ctx, t);
   draw_clock_hands(ctx, t);
 }
