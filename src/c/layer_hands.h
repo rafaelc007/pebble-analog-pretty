@@ -10,3 +10,6 @@ void hands_layer_mark_dirty(void);
 
 // Destroys the hands layer — call from main_window_unload
 void hands_layer_destroy(void);
+
+// Shake to show feature
+void   hands_layer_handle_tap(AccelAxisType axis, int32_t direction);

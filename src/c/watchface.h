@@ -22,6 +22,11 @@
 #define MINUTE_HAND_WIDTH          4
 #define CENTER_DOT_RADIUS          4
 
+// Seconds hand — only shown on shake
+#define SECOND_HAND_LENGTH_RATIO  0.85f
+#define SECOND_HAND_WIDTH         2
+#define SECONDS_DISPLAY_DURATION  10000  // milliseconds (10 seconds)
+
 // ============================================================================
 // SHARED GEOMETRY STATE — owned by watchface.c, read by all modules
 // ============================================================================

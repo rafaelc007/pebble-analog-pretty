@@ -14,7 +14,8 @@ static Window *s_main_window;
 // ============================================================================
 
 // Only marks the hands layer dirty — face layer is never touched after init
-static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
+  // Exposed externally so layer_hands.c can restore it after seconds hide
   hands_layer_mark_dirty();
 }
 
@@ -48,9 +49,11 @@ static void init(void) {
   });
   window_stack_push(s_main_window, true);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  accel_tap_service_subscribe(hands_layer_handle_tap);
 }
 
 static void deinit(void) {
+  accel_tap_service_unsubscribe();
   window_destroy(s_main_window);
 }
 
