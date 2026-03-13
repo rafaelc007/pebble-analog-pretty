@@ -53,6 +53,7 @@ extern GFont  date_font;
 void watchface_geometry_init(GRect bounds);
 
 int32_t degrees_to_trig_angle(int degrees);
+int32_t revert_angle(int32_t angle);
 
 GPoint get_point_on_circle(int32_t angle, int distance_from_center);
 GPoint get_point_on_rect(int32_t angle, int w_radius, int h_radius);

@@ -48,7 +48,7 @@ static void draw_clock_hands(GContext *ctx, struct tm *t) {
   int32_t m_angle = degrees_to_trig_angle(t->tm_min * 6);
   GPoint  h_end   = get_point_on_circle(h_angle, s_radius * HOUR_HAND_LENGTH_RATIO);
   GPoint  m_end   = get_point_on_circle(m_angle, s_radius * MINUTE_HAND_LENGTH_RATIO);
-  GPoint  h_short = get_point_on_circle(h_angle, s_radius * HOUR_HAND_LENGTH_RATIO - hour_thickness);
+  GPoint  h_short = get_point_on_circle(h_angle, s_radius * HOUR_HAND_LENGTH_RATIO - hour_thickness + 1);
 
   // Draw hour hand in two passes
   graphics_context_set_stroke_color(ctx, GColorWhite);
@@ -68,12 +68,14 @@ static void draw_clock_hands(GContext *ctx, struct tm *t) {
   if (s_show_seconds) {
     int32_t s_angle = degrees_to_trig_angle(t->tm_sec * 6);
     GPoint  s_end   = get_point_on_circle(s_angle, s_radius * SECOND_HAND_LENGTH_RATIO);
+    GPoint s_start = get_point_on_circle(revert_angle(s_angle), s_radius * 0.2);
     graphics_context_set_stroke_color(ctx, WATCHFACE_THEME_COLOR);
     graphics_context_set_stroke_width(ctx, SECOND_HAND_WIDTH);
-    graphics_draw_line(ctx, s_center, s_end);
+    graphics_draw_line(ctx, s_start, s_end);
   }
 
   // Center dot drawn last so it sits on top of all hands
+  graphics_context_set_stroke_width(ctx, MINUTE_HAND_WIDTH);
   graphics_context_set_stroke_color(ctx, GColorBlack);
   graphics_draw_circle(ctx, s_center, CENTER_DOT_RADIUS);
   graphics_context_set_fill_color(ctx, WATCHFACE_THEME_COLOR);

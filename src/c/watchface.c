@@ -35,6 +35,10 @@ int32_t degrees_to_trig_angle(int degrees) {
   return TRIG_MAX_ANGLE * degrees / 360;
 }
 
+int32_t revert_angle(int32_t angle) {
+  return angle + 32768;
+}
+
 GPoint get_point_on_circle(int32_t angle, int distance_from_center) {
   return (GPoint) {
     .x = s_center.x + (int)(sin_lookup(angle) * distance_from_center / TRIG_MAX_RATIO),
