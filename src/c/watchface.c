@@ -24,7 +24,7 @@ void watchface_geometry_init(GRect bounds) {
 
   // Font cached here — shared by face and hands layers
   s_font = fonts_get_system_font(FONT_KEY_LECO_26_BOLD_NUMBERS_AM_PM);
-  date_font = fonts_get_system_font(FONT_KEY_LECO_28_LIGHT_NUMBERS);
+  date_font = fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS);
 }
 
 // ============================================================================
