@@ -38,7 +38,7 @@ static void draw_date_widget(GContext *ctx, struct tm *t) {
 
   // Center vertically between the center dot (bottom) and the "6" hour label (top)
   int face_h_edge = s_h_radius - (CLOCK_FACE_STROKE_WIDTH / 2);
-  int num_offset  = MAJOR_MARKER_LENGTH + NUMBER_OFFSET_FROM_MARKER;
+  int num_offset  = MAJOR_MARKER_LENGTH + s_num_offset;
   int six_top     = s_center.y + (face_h_edge - num_offset) - 16;
   int dot_bottom  = s_center.y + CENTER_DOT_RADIUS;
   int mid_y       = (dot_bottom + six_top) / 2;

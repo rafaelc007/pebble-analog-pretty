@@ -11,6 +11,7 @@ int    s_w_radius;
 int    s_h_radius;
 GFont  s_font;
 GFont  date_font;
+int    s_num_offset;
 
 // ============================================================================
 // GEOMETRY INIT 
@@ -22,9 +23,17 @@ void watchface_geometry_init(GRect bounds) {
   s_h_radius = (bounds.size.h / 2) - 2;
   s_radius   = (s_w_radius < s_h_radius) ? s_w_radius : s_h_radius;
 
-  // Font cached here — shared by face and hands layers
-  s_font = fonts_get_system_font(FONT_KEY_LECO_26_BOLD_NUMBERS_AM_PM);
+  // Large screens (emery 200, gabbro 260) use the bigger number font;
+  // smaller screens (basalt/aplite/diorite/flint 144, chalk 180) use LECO_20.
+  s_font = (bounds.size.w > 195)
+    ? fonts_get_system_font(FONT_KEY_LECO_26_BOLD_NUMBERS_AM_PM)
+    : fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS);
   date_font = fonts_get_system_font(FONT_KEY_LECO_20_BOLD_NUMBERS);
+
+  // Proportional gap from tick inner end to number center.
+  // Keep the original 20px on large screens (emery s_radius≈98, gabbro≈128);
+  // scale down on smaller platforms so numbers sit visually closer to their ticks.
+  s_num_offset = (s_radius > 90) ? NUMBER_OFFSET_FROM_MARKER : (s_radius / 5);
 }
 
 // ============================================================================

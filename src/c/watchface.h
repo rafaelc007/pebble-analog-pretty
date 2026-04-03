@@ -44,6 +44,7 @@ extern int    s_w_radius;
 extern int    s_h_radius;
 extern GFont  s_font;
 extern GFont  date_font;
+extern int    s_num_offset;  // proportional gap from tick inner end to number center
 
 // ============================================================================
 // GEOMETRY API

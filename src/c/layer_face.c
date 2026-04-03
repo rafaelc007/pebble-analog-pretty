@@ -63,7 +63,7 @@ static void draw_hour_number(GContext *ctx, int index) {
 
   int face_w  = get_face_w_edge();
   int face_h  = get_face_h_edge();
-  int offset  = MAJOR_MARKER_LENGTH + NUMBER_OFFSET_FROM_MARKER;
+  int offset  = MAJOR_MARKER_LENGTH + s_num_offset;
 
   GPoint pos  = get_point_on_face(angle, face_w - offset, face_h - offset);
   int    hour = get_display_hour(index);
@@ -72,9 +72,15 @@ static void draw_hour_number(GContext *ctx, int index) {
   snprintf(buffer, sizeof(buffer), "%d", hour);
 
   bool is_active = (hour == s_active_hour);
+  #if defined(PBL_COLOR)
   graphics_context_set_text_color(ctx,
     is_active ? HOUR_NUMBER_ACTIVE_COLOR : HOUR_NUMBER_INACTIVE_COLOR
   );
+  #else
+  // B&W platforms: draw all numbers in white — no active-hour highlighting
+  (void)is_active;
+  graphics_context_set_text_color(ctx, HOUR_NUMBER_ACTIVE_COLOR);
+  #endif
 
   GRect text_rect = GRect(pos.x - 16, pos.y - 16, 32, 32);
   graphics_draw_text(ctx, buffer, s_font,

@@ -205,7 +205,7 @@ Layer* weather_layer_create(GRect bounds, Layer *parent) {
   // Formula: top of 12 o'clock text = s_center.y - (face_h_edge - num_offset) - 16
   //          bottom of same text    =                                          + 16
   int face_h_edge  = s_h_radius - (CLOCK_FACE_STROKE_WIDTH / 2);
-  int num_offset   = MAJOR_MARKER_LENGTH + NUMBER_OFFSET_FROM_MARKER;
+  int num_offset   = MAJOR_MARKER_LENGTH + s_num_offset;
   int label_bottom = s_center.y - (face_h_edge - num_offset) + 16;
   int layer_y      = label_bottom + 6;   // 6 px gap below the "12" label
   int layer_h      = 30;
