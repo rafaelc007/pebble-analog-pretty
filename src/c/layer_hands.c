@@ -30,15 +30,23 @@ static void seconds_timer_callback(void *context) {
 // ============================================================================
 
 static void draw_date_widget(GContext *ctx, struct tm *t) {
-  int32_t angle       = degrees_to_trig_angle(90);
-  int     date_dist_w = s_w_radius - (MAJOR_MARKER_LENGTH + NUMBER_OFFSET_FROM_MARKER + 25);
-  int     date_dist_h = s_h_radius - (MAJOR_MARKER_LENGTH + NUMBER_OFFSET_FROM_MARKER + 25);
-  GPoint  pos         = get_point_on_face(angle, date_dist_w, date_dist_h);
-  static char date_buffer[3];
-  snprintf(date_buffer, sizeof(date_buffer), "%d", t->tm_mday);
+  static const char * const WEEKDAYS[] = {
+    "SUN","MON","TUE","WED","THU","FRI","SAT"
+  };
+  static char date_buffer[8]; // "SAT-31\0"
+  snprintf(date_buffer, sizeof(date_buffer), "%s-%d", WEEKDAYS[t->tm_wday], t->tm_mday);
+
+  // Center vertically between the center dot (bottom) and the "6" hour label (top)
+  int face_h_edge = s_h_radius - (CLOCK_FACE_STROKE_WIDTH / 2);
+  int num_offset  = MAJOR_MARKER_LENGTH + NUMBER_OFFSET_FROM_MARKER;
+  int six_top     = s_center.y + (face_h_edge - num_offset) - 16;
+  int dot_bottom  = s_center.y + CENTER_DOT_RADIUS;
+  int mid_y       = (dot_bottom + six_top) / 2;
+
+  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
   graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(WATCHFACE_THEME_COLOR, GColorWhite));
-  GRect text_rect = GRect(s_center.x - 19, s_center.y + (s_radius / 2) - NUMBER_OFFSET_FROM_MARKER - 15, 38, 30);
-  graphics_draw_text(ctx, date_buffer, date_font,
+  GRect text_rect = GRect(s_center.x - 40, mid_y - 12, 80, 24);
+  graphics_draw_text(ctx, date_buffer, font,
                      text_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 }
 
