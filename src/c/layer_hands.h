@@ -17,3 +17,7 @@ void   hands_layer_handle_tap(AccelAxisType axis, int32_t direction);
 // Enable / disable the shake-to-show-seconds feature at runtime.
 // When disabled, the accelerometer subscription is dropped to save power.
 void   hands_layer_set_shake_enabled(bool enabled);
+
+// Set how long (in milliseconds) the seconds hand stays visible after a shake.
+// Clamped to [SECONDS_DISPLAY_DURATION_MIN, SECONDS_DISPLAY_DURATION_MAX].
+void   hands_layer_set_seconds_duration(uint32_t duration_ms);

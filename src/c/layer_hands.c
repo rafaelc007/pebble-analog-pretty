@@ -11,6 +11,7 @@ static bool      s_show_seconds   = false;
 static bool      s_shake_enabled  = true;
 static bool      s_accel_subscribed = false;
 static AppTimer *s_seconds_timer = NULL;
+static uint32_t  s_seconds_duration = SECONDS_DISPLAY_DURATION_DEFAULT;
 
 // ============================================================================
 // PRIVATE: SECONDS TIMER MANAGEMENT
@@ -137,7 +138,7 @@ void hands_layer_handle_tap(AccelAxisType axis, int32_t direction) {
 
   // If seconds are already showing, reset the countdown timer
   if (s_seconds_timer) {
-    app_timer_reschedule(s_seconds_timer, SECONDS_DISPLAY_DURATION);
+    app_timer_reschedule(s_seconds_timer, s_seconds_duration);
     return;
   }
 
@@ -149,14 +150,24 @@ void hands_layer_handle_tap(AccelAxisType axis, int32_t direction) {
   extern void tick_handler(struct tm*, TimeUnits);
   tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
 
-  // Schedule auto-hide after SECONDS_DISPLAY_DURATION milliseconds
+  // Schedule auto-hide after the user-configured duration
   s_seconds_timer = app_timer_register(
-    SECONDS_DISPLAY_DURATION,
+    s_seconds_duration,
     seconds_timer_callback,
     (void*)tick_handler   // pass tick_handler so callback can restore it
   );
 
   layer_mark_dirty(s_hands_layer);
+}
+
+void hands_layer_set_seconds_duration(uint32_t duration_ms) {
+  if (duration_ms < SECONDS_DISPLAY_DURATION_MIN) duration_ms = SECONDS_DISPLAY_DURATION_MIN;
+  if (duration_ms > SECONDS_DISPLAY_DURATION_MAX) duration_ms = SECONDS_DISPLAY_DURATION_MAX;
+  s_seconds_duration = duration_ms;
+  // If a countdown is already running, extend/shrink it to match
+  if (s_seconds_timer) {
+    app_timer_reschedule(s_seconds_timer, s_seconds_duration);
+  }
 }
 
 void hands_layer_set_shake_enabled(bool enabled) {

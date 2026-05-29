@@ -11,6 +11,7 @@
 static Window *s_main_window;
 
 #define PERSIST_KEY_SHAKE_SECONDS 1
+#define PERSIST_KEY_SECONDS_DURATION 2
 
 // ============================================================================
 // EVENT HANDLERS
@@ -48,6 +49,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   Tuple *temp_tuple  = dict_find(iterator, MESSAGE_KEY_TEMPERATURE);
   Tuple *icon_tuple  = dict_find(iterator, MESSAGE_KEY_WEATHER_ICON);
   Tuple *shake_tuple = dict_find(iterator, MESSAGE_KEY_SHAKE_SECONDS_ENABLED);
+  Tuple *dur_tuple   = dict_find(iterator, MESSAGE_KEY_SECONDS_DURATION);
 
   if (temp_tuple && icon_tuple) {
     weather_layer_set_data(
@@ -60,6 +62,14 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     bool enabled = (shake_tuple->value->int32 != 0);
     persist_write_bool(PERSIST_KEY_SHAKE_SECONDS, enabled);
     hands_layer_set_shake_enabled(enabled);
+  }
+
+  if (dur_tuple) {
+    // Sent from pkjs in seconds; convert to ms for the watch-side timer
+    int32_t seconds = dur_tuple->value->int32;
+    uint32_t duration_ms = (uint32_t)seconds * 1000;
+    persist_write_int(PERSIST_KEY_SECONDS_DURATION, (int32_t)duration_ms);
+    hands_layer_set_seconds_duration(duration_ms);
   }
 }
 
@@ -101,6 +111,12 @@ static void init(void) {
     ? persist_read_bool(PERSIST_KEY_SHAKE_SECONDS)
     : true;
   hands_layer_set_shake_enabled(shake_enabled);
+
+  // Apply persisted seconds-display duration (default: 10s)
+  if (persist_exists(PERSIST_KEY_SECONDS_DURATION)) {
+    uint32_t duration_ms = (uint32_t)persist_read_int(PERSIST_KEY_SECONDS_DURATION);
+    hands_layer_set_seconds_duration(duration_ms);
+  }
 
   // AppMessage — receive weather and settings from pkjs
   app_message_register_inbox_received(inbox_received_callback);

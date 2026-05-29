@@ -13,9 +13,14 @@ var SETTINGS_KEY = 'simple_watchface_settings';
 function loadSettings() {
   try {
     var raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      var s = JSON.parse(raw);
+      if (typeof s.shakeSecondsEnabled === 'undefined') s.shakeSecondsEnabled = true;
+      if (typeof s.secondsDuration === 'undefined') s.secondsDuration = 10;
+      return s;
+    }
   } catch (e) {}
-  return { shakeSecondsEnabled: true };
+  return { shakeSecondsEnabled: true, secondsDuration: 10 };
 }
 
 function saveSettings(s) {
@@ -24,7 +29,10 @@ function saveSettings(s) {
 
 function sendSettings(s) {
   Pebble.sendAppMessage(
-    { 'SHAKE_SECONDS_ENABLED': s.shakeSecondsEnabled ? 1 : 0 },
+    {
+      'SHAKE_SECONDS_ENABLED': s.shakeSecondsEnabled ? 1 : 0,
+      'SECONDS_DURATION': s.secondsDuration | 0
+    },
     function() { console.log('Settings sent to Pebble'); },
     function() { console.log('Error sending settings to Pebble'); }
   );
@@ -35,6 +43,13 @@ function sendSettings(s) {
 // ---------------------------------------------------------------------------
 function buildConfigUrl(settings) {
   var checked = settings.shakeSecondsEnabled ? 'checked' : '';
+  var durOpts = [3, 5, 10, 15];
+  var optsHtml = '';
+  for (var i = 0; i < durOpts.length; i++) {
+    var v = durOpts[i];
+    var sel = (v === settings.secondsDuration) ? ' selected' : '';
+    optsHtml += '<option value="' + v + '"' + sel + '>' + v + ' seconds</option>';
+  }
   var html =
     '<!DOCTYPE html><html><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -44,24 +59,38 @@ function buildConfigUrl(settings) {
     'h1{font-size:20px;margin:0 0 16px;}' +
     '.section{background:#1d1d1d;border-radius:8px;padding:16px;margin-bottom:16px;}' +
     '.row{display:flex;align-items:center;justify-content:space-between;}' +
+    '.row + .row{margin-top:16px;border-top:1px solid #2a2a2a;padding-top:16px;}' +
     '.label{flex:1;}' +
     '.title{font-size:16px;font-weight:600;}' +
     '.desc{font-size:13px;color:#9a9a9a;margin-top:4px;}' +
     'input[type=checkbox]{transform:scale(1.6);margin-left:16px;accent-color:#00aaff;}' +
+    'select{margin-left:16px;background:#2a2a2a;color:#eee;border:0;padding:8px 10px;border-radius:6px;font-size:15px;}' +
     'button{display:block;width:100%;padding:14px;border-radius:8px;border:0;font-size:16px;font-weight:600;background:#00aaff;color:#fff;}' +
     '</style></head><body>' +
     '<h1>Seconds Hand</h1>' +
-    '<div class="section"><div class="row">' +
-    '<div class="label">' +
-    '<div class="title">Shake to show seconds</div>' +
-    '<div class="desc">Tap the watch to reveal the seconds hand for 10 seconds. Turning this off disables the accelerometer for better battery life.</div>' +
+    '<div class="section">' +
+      '<div class="row">' +
+        '<div class="label">' +
+          '<div class="title">Shake to show seconds</div>' +
+          '<div class="desc">Tap the watch to reveal the seconds hand. Turning this off disables the accelerometer for better battery life.</div>' +
+        '</div>' +
+        '<input id="shake" type="checkbox" ' + checked + '>' +
+      '</div>' +
+      '<div class="row">' +
+        '<div class="label">' +
+          '<div class="title">Display duration</div>' +
+          '<div class="desc">How long the seconds hand stays visible after a shake.</div>' +
+        '</div>' +
+        '<select id="dur">' + optsHtml + '</select>' +
+      '</div>' +
     '</div>' +
-    '<input id="shake" type="checkbox" ' + checked + '>' +
-    '</div></div>' +
     '<button id="save">Save</button>' +
     '<script>' +
     'document.getElementById("save").addEventListener("click",function(){' +
-    'var out={shakeSecondsEnabled:document.getElementById("shake").checked};' +
+    'var out={' +
+    'shakeSecondsEnabled:document.getElementById("shake").checked,' +
+    'secondsDuration:parseInt(document.getElementById("dur").value,10)' +
+    '};' +
     'document.location="pebblejs://close#"+encodeURIComponent(JSON.stringify(out));' +
     '});' +
     '</script></body></html>';

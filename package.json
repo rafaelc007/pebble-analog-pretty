@@ -1,7 +1,7 @@
 {
   "name": "analog-pretty",
   "author": "Me",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "keywords": ["pebble-app"],
   "private": true,
   "dependencies": {},
@@ -26,7 +26,8 @@
       "dummy",
       "TEMPERATURE",
       "WEATHER_ICON",
-      "SHAKE_SECONDS_ENABLED"
+      "SHAKE_SECONDS_ENABLED",
+      "SECONDS_DURATION"
     ],
     "resources": {
       "media": [

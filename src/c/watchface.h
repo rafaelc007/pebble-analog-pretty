@@ -26,7 +26,9 @@
 // Seconds hand — only shown on shake
 #define SECOND_HAND_LENGTH_RATIO  0.85f
 #define SECOND_HAND_WIDTH         2
-#define SECONDS_DISPLAY_DURATION  10000  // milliseconds (10 seconds)
+#define SECONDS_DISPLAY_DURATION_DEFAULT  10000  // milliseconds (10 seconds)
+#define SECONDS_DISPLAY_DURATION_MIN      3000
+#define SECONDS_DISPLAY_DURATION_MAX      60000
 
 #define HOUR_NUMBER_INACTIVE_COLOR  PBL_IF_COLOR_ELSE(GColorDarkGray, GColorDarkGray)
 #define HOUR_NUMBER_ACTIVE_COLOR    GColorWhite
