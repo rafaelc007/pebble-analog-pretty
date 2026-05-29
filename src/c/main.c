@@ -16,10 +16,28 @@ static Window *s_main_window;
 // EVENT HANDLERS
 // ============================================================================
 
-// Only marks the hands layer dirty — face layer is never touched after init
+// Ask pkjs to refetch and resend weather. Sends a 1-key AppMessage with the
+// pre-existing `dummy` key, which the pkjs `appmessage` handler treats as a
+// "please refresh" signal.
+static void request_weather_refresh(void) {
+  DictionaryIterator *iter;
+  if (app_message_outbox_begin(&iter) != APP_MSG_OK) return;
+  dict_write_uint8(iter, MESSAGE_KEY_dummy, 1);
+  app_message_outbox_send();
+}
+
+// Marks the hands layer dirty every tick. Also triggers an hourly weather
+// refresh by piggybacking on the existing tick — no extra timers or wakeups.
 void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   // Exposed externally so layer_hands.c can restore it after seconds hide
   hands_layer_mark_dirty();
+
+  // Refresh weather once per hour boundary. units_changed includes HOUR_UNIT
+  // on the first tick after the hour rolls over, regardless of whether we're
+  // currently in MINUTE_UNIT or SECOND_UNIT mode.
+  if (units_changed & HOUR_UNIT) {
+    request_weather_refresh();
+  }
 }
 
 // ============================================================================
