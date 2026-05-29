@@ -13,3 +13,7 @@ void hands_layer_destroy(void);
 
 // Shake to show feature
 void   hands_layer_handle_tap(AccelAxisType axis, int32_t direction);
+
+// Enable / disable the shake-to-show-seconds feature at runtime.
+// When disabled, the accelerometer subscription is dropped to save power.
+void   hands_layer_set_shake_enabled(bool enabled);

@@ -25,7 +25,8 @@
     "messageKeys": [
       "dummy",
       "TEMPERATURE",
-      "WEATHER_ICON"
+      "WEATHER_ICON",
+      "SHAKE_SECONDS_ENABLED"
     ],
     "resources": {
       "media": [

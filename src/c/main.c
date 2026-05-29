@@ -10,6 +10,8 @@
 
 static Window *s_main_window;
 
+#define PERSIST_KEY_SHAKE_SECONDS 1
+
 // ============================================================================
 // EVENT HANDLERS
 // ============================================================================
@@ -25,13 +27,21 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 // ============================================================================
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
-  Tuple *temp_tuple = dict_find(iterator, MESSAGE_KEY_TEMPERATURE);
-  Tuple *icon_tuple = dict_find(iterator, MESSAGE_KEY_WEATHER_ICON);
+  Tuple *temp_tuple  = dict_find(iterator, MESSAGE_KEY_TEMPERATURE);
+  Tuple *icon_tuple  = dict_find(iterator, MESSAGE_KEY_WEATHER_ICON);
+  Tuple *shake_tuple = dict_find(iterator, MESSAGE_KEY_SHAKE_SECONDS_ENABLED);
+
   if (temp_tuple && icon_tuple) {
     weather_layer_set_data(
       (int)temp_tuple->value->int32,
       (WeatherIconType)icon_tuple->value->int32
     );
+  }
+
+  if (shake_tuple) {
+    bool enabled = (shake_tuple->value->int32 != 0);
+    persist_write_bool(PERSIST_KEY_SHAKE_SECONDS, enabled);
+    hands_layer_set_shake_enabled(enabled);
   }
 }
 
@@ -67,15 +77,20 @@ static void init(void) {
   });
   window_stack_push(s_main_window, true);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
-  accel_tap_service_subscribe(hands_layer_handle_tap);
 
-  // AppMessage — receive weather from pkjs
+  // Apply persisted shake-to-show-seconds preference (default: enabled)
+  bool shake_enabled = persist_exists(PERSIST_KEY_SHAKE_SECONDS)
+    ? persist_read_bool(PERSIST_KEY_SHAKE_SECONDS)
+    : true;
+  hands_layer_set_shake_enabled(shake_enabled);
+
+  // AppMessage — receive weather and settings from pkjs
   app_message_register_inbox_received(inbox_received_callback);
   app_message_open(128, 0);
 }
 
 static void deinit(void) {
-  accel_tap_service_unsubscribe();
+  hands_layer_set_shake_enabled(false);
   window_destroy(s_main_window);
 }
 

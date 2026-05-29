@@ -7,7 +7,9 @@
 // ============================================================================
 
 static Layer    *s_hands_layer;
-static bool      s_show_seconds = false;
+static bool      s_show_seconds   = false;
+static bool      s_shake_enabled  = true;
+static bool      s_accel_subscribed = false;
 static AppTimer *s_seconds_timer = NULL;
 
 // ============================================================================
@@ -129,8 +131,10 @@ void hands_layer_destroy(void) {
   s_hands_layer = NULL;
 }
 
-// Tap handler — registered in main.c via accel_tap_service_subscribe
+// Tap handler — registered via accel_tap_service_subscribe when shake-to-show is enabled
 void hands_layer_handle_tap(AccelAxisType axis, int32_t direction) {
+  if (!s_shake_enabled) return;
+
   // If seconds are already showing, reset the countdown timer
   if (s_seconds_timer) {
     app_timer_reschedule(s_seconds_timer, SECONDS_DISPLAY_DURATION);
@@ -153,4 +157,29 @@ void hands_layer_handle_tap(AccelAxisType axis, int32_t direction) {
   );
 
   layer_mark_dirty(s_hands_layer);
+}
+
+void hands_layer_set_shake_enabled(bool enabled) {
+  if (enabled == s_shake_enabled && enabled == s_accel_subscribed) return;
+  s_shake_enabled = enabled;
+
+  if (enabled && !s_accel_subscribed) {
+    accel_tap_service_subscribe(hands_layer_handle_tap);
+    s_accel_subscribed = true;
+  } else if (!enabled && s_accel_subscribed) {
+    accel_tap_service_unsubscribe();
+    s_accel_subscribed = false;
+
+    // If seconds are currently showing, hide them immediately
+    if (s_seconds_timer) {
+      app_timer_cancel(s_seconds_timer);
+      s_seconds_timer = NULL;
+    }
+    if (s_show_seconds) {
+      s_show_seconds = false;
+      extern void tick_handler(struct tm*, TimeUnits);
+      tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+      if (s_hands_layer) layer_mark_dirty(s_hands_layer);
+    }
+  }
 }
