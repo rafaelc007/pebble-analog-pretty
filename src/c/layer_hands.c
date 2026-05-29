@@ -98,6 +98,7 @@ static void hands_update_proc(Layer *layer, GContext *ctx) {
   time_t    now = time(NULL);
   struct tm *t  = localtime(&now);
 
+  graphics_context_set_antialiased(ctx, false);
   face_layer_update_hour(t->tm_hour);
   draw_date_widget(ctx, t);
   draw_clock_hands(ctx, t);

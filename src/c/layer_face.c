@@ -100,6 +100,7 @@ static void draw_all_markers(GContext *ctx) {
 // ============================================================================
 
 static void face_update_proc(Layer *layer, GContext *ctx) {
+  graphics_context_set_antialiased(ctx, false);
   draw_clock_face(ctx);
   draw_all_markers(ctx);
 }

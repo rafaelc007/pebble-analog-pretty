@@ -42,10 +42,10 @@ static void main_window_load(Window *window) {
   // Init shared geometry and font once
   watchface_geometry_init(bounds);
 
-  // Create layers in draw order: face first (bottom), hands on top, weather on top
+  // Create layers in draw order: face (bottom), weather, then hands on top
   face_layer_create(bounds, root);
-  hands_layer_create(bounds, root);
   weather_layer_create(bounds, root);
+  hands_layer_create(bounds, root);
 }
 
 static void main_window_unload(Window *window) {

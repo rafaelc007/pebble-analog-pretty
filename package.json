@@ -28,7 +28,16 @@
       "WEATHER_ICON"
     ],
     "resources": {
-      "media": []
+      "media": [
+        { "type": "raw", "name": "ICON_CLEAR",   "file": "Pebble_50x50_Sunny_day_small.pdc" },
+        { "type": "raw", "name": "ICON_CLOUDY",  "file": "Pebble_50x50_Partly_cloudy_small.pdc" },
+        { "type": "raw", "name": "ICON_FOG",     "file": "Pebble_50x50_Generic_weather_small.pdc" },
+        { "type": "raw", "name": "ICON_DRIZZLE", "file": "Pebble_50x50_Light_rain_small.pdc" },
+        { "type": "raw", "name": "ICON_RAIN",    "file": "Pebble_50x50_Heavy_rain_small.pdc" },
+        { "type": "raw", "name": "ICON_SNOW",    "file": "Pebble_50x50_Light_snow_small.pdc" },
+        { "type": "raw", "name": "ICON_STORM",   "file": "Pebble_50x50_Heavy_rain_small.pdc" },
+        { "type": "raw", "name": "ICON_UNKNOWN", "file": "Pebble_50x50_Generic_weather_small.pdc" }
+      ]
     }
   }
 }

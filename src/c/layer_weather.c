@@ -5,150 +5,55 @@
 // PRIVATE STATE
 // ============================================================================
 
-static Layer         *s_weather_layer;
-static int            s_temp_c    = 0;
-static WeatherIconType s_icon     = WeatherIconUnknown;
-static bool           s_has_data  = false;
+static Layer              *s_weather_layer;
+static int                 s_temp_c    = 0;
+static WeatherIconType     s_icon      = WeatherIconUnknown;
+static bool                s_has_data  = false;
+static GDrawCommandImage  *s_icon_imgs[8];
 
-// ============================================================================
-// ICON DRAWING — all primitives, no resources
-// ============================================================================
-
-// Draw a small cloud shape: two overlapping circles
-// cx, cy = center of the cloud body
-static void draw_cloud(GContext *ctx, int cx, int cy) {
-  graphics_fill_circle(ctx, GPoint(cx - 3, cy + 2), 5);
-  graphics_fill_circle(ctx, GPoint(cx + 4, cy + 2), 4);
-  graphics_fill_circle(ctx, GPoint(cx,     cy - 1), 6);
-}
-
-static void draw_icon_clear(GContext *ctx, GPoint origin) {
-  // Sun: filled circle + 8 short rays
-  int cx = origin.x + 10;
-  int cy = origin.y + 10;
-  // Rays
-  graphics_context_set_stroke_color(ctx, WATCHFACE_THEME_COLOR);
-  graphics_context_set_stroke_width(ctx, 1);
-  for (int d = 0; d < 360; d += 45) {
-    int32_t angle = degrees_to_trig_angle(d);
-    GPoint inner = {
-      .x = cx + (int)(sin_lookup(angle) * 8 / TRIG_MAX_RATIO),
-      .y = cy - (int)(cos_lookup(angle) * 8 / TRIG_MAX_RATIO)
-    };
-    GPoint outer = {
-      .x = cx + (int)(sin_lookup(angle) * 11 / TRIG_MAX_RATIO),
-      .y = cy - (int)(cos_lookup(angle) * 11 / TRIG_MAX_RATIO)
-    };
-    graphics_draw_line(ctx, inner, outer);
-  }
-  // Core
-  graphics_context_set_fill_color(ctx, WATCHFACE_THEME_COLOR);
-  graphics_fill_circle(ctx, GPoint(cx, cy), 5);
-}
-
-static void draw_icon_cloudy(GContext *ctx, GPoint origin) {
-  int cx = origin.x + 10;
-  int cy = origin.y + 11;
-  graphics_context_set_fill_color(ctx, GColorLightGray);
-  draw_cloud(ctx, cx, cy);
-}
-
-static void draw_icon_fog(GContext *ctx, GPoint origin) {
-  int x0 = origin.x + 2;
-  int y  = origin.y + 6;
-  graphics_context_set_stroke_color(ctx, GColorLightGray);
-  graphics_context_set_stroke_width(ctx, 2);
-  for (int i = 0; i < 3; i++) {
-    graphics_draw_line(ctx, GPoint(x0, y + i * 4), GPoint(x0 + 15, y + i * 4));
-  }
-}
-
-static void draw_icon_drizzle(GContext *ctx, GPoint origin) {
-  int cx = origin.x + 10;
-  int cy = origin.y + 7;
-  graphics_context_set_fill_color(ctx, GColorLightGray);
-  draw_cloud(ctx, cx, cy);
-  // Two short drop lines below
-  graphics_context_set_stroke_color(ctx, GColorCyan);
-  graphics_context_set_stroke_width(ctx, 1);
-  graphics_draw_line(ctx, GPoint(cx - 3, cy + 7), GPoint(cx - 5, cy + 12));
-  graphics_draw_line(ctx, GPoint(cx + 4, cy + 7), GPoint(cx + 2, cy + 12));
-}
-
-static void draw_icon_rain(GContext *ctx, GPoint origin) {
-  int cx = origin.x + 10;
-  int cy = origin.y + 6;
-  graphics_context_set_fill_color(ctx, GColorLightGray);
-  draw_cloud(ctx, cx, cy);
-  // Three drop lines
-  graphics_context_set_stroke_color(ctx, GColorCyan);
-  graphics_context_set_stroke_width(ctx, 1);
-  graphics_draw_line(ctx, GPoint(cx - 4, cy + 7), GPoint(cx - 7, cy + 14));
-  graphics_draw_line(ctx, GPoint(cx,     cy + 7), GPoint(cx - 3, cy + 14));
-  graphics_draw_line(ctx, GPoint(cx + 4, cy + 7), GPoint(cx + 1, cy + 14));
-}
-
-static void draw_icon_snow(GContext *ctx, GPoint origin) {
-  int cx = origin.x + 10;
-  int cy = origin.y + 10;
-  graphics_context_set_stroke_color(ctx, GColorCyan);
-  graphics_context_set_stroke_width(ctx, 1);
-  // 6-arm asterisk
-  for (int d = 0; d < 180; d += 60) {
-    int32_t angle = degrees_to_trig_angle(d);
-    GPoint a = {
-      .x = cx + (int)(sin_lookup(angle) * 8 / TRIG_MAX_RATIO),
-      .y = cy - (int)(cos_lookup(angle) * 8 / TRIG_MAX_RATIO)
-    };
-    GPoint b = {
-      .x = cx - (int)(sin_lookup(angle) * 8 / TRIG_MAX_RATIO),
-      .y = cy + (int)(cos_lookup(angle) * 8 / TRIG_MAX_RATIO)
-    };
-    graphics_draw_line(ctx, a, b);
-  }
-  // Center dot
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_circle(ctx, GPoint(cx, cy), 2);
-}
-
-static void draw_icon_storm(GContext *ctx, GPoint origin) {
-  int cx = origin.x + 10;
-  int cy = origin.y + 5;
-  // Cloud
-  graphics_context_set_fill_color(ctx, GColorLightGray);
-  draw_cloud(ctx, cx, cy);
-  // Lightning bolt (filled triangle-ish path via two lines with width)
-  graphics_context_set_stroke_color(ctx, GColorYellow);
-  graphics_context_set_stroke_width(ctx, 2);
-  graphics_draw_line(ctx, GPoint(cx,     cy + 7),  GPoint(cx - 4, cy + 13));
-  graphics_draw_line(ctx, GPoint(cx - 4, cy + 13), GPoint(cx,     cy + 11));
-  graphics_draw_line(ctx, GPoint(cx,     cy + 11), GPoint(cx - 5, cy + 18));
-}
-
-typedef void (*IconDrawFn)(GContext*, GPoint);
-
-static const IconDrawFn s_icon_fns[] = {
-  draw_icon_clear,   // 0
-  draw_icon_cloudy,  // 1
-  draw_icon_fog,     // 2
-  draw_icon_drizzle, // 3
-  draw_icon_rain,    // 4
-  draw_icon_snow,    // 5
-  draw_icon_storm,   // 6
-  NULL,              // 7 unknown — no icon, just text
+static const uint32_t s_icon_resources[8] = {
+  RESOURCE_ID_ICON_CLEAR,    // 0
+  RESOURCE_ID_ICON_CLOUDY,   // 1
+  RESOURCE_ID_ICON_FOG,      // 2
+  RESOURCE_ID_ICON_DRIZZLE,  // 3
+  RESOURCE_ID_ICON_RAIN,     // 4
+  RESOURCE_ID_ICON_SNOW,     // 5
+  RESOURCE_ID_ICON_STORM,    // 6
+  RESOURCE_ID_ICON_UNKNOWN,  // 7
 };
+
+// Invert the RGB bits of a GColor8, preserving the alpha bits.
+static GColor invert_gcolor(GColor c) {
+  c.argb = (c.argb & 0xC0) | ((~c.argb) & 0x3F);
+  return c;
+}
+
+static bool invert_command_colors(GDrawCommand *command, uint32_t index, void *context) {
+  (void)index; (void)context;
+  GColor fill   = gdraw_command_get_fill_color(command);
+  GColor stroke = gdraw_command_get_stroke_color(command);
+  gdraw_command_set_fill_color(command, invert_gcolor(fill));
+  gdraw_command_set_stroke_color(command, invert_gcolor(stroke));
+  return true;
+}
+
+static void invert_image_colors(GDrawCommandImage *img) {
+  if (!img) return;
+  GDrawCommandList *list = gdraw_command_image_get_command_list(img);
+  if (!list) return;
+  gdraw_command_list_iterate(list, invert_command_colors, NULL);
+}
 
 // ============================================================================
 // LAYER UPDATE PROC
 // ============================================================================
 
 static void weather_update_proc(Layer *layer, GContext *ctx) {
+  graphics_context_set_antialiased(ctx, false);
   GRect bounds = layer_get_bounds(layer);
   int w  = bounds.size.w;
   int lh = bounds.size.h;
 
-  const int ICON_W = 20;
-  const int ICON_H = 20;
   const int GAP    = 4;
   const int TEXT_H = 26;
   const int MAX_TEXT_W = 56; // enough for "-99°C"
@@ -170,22 +75,29 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
   );
   int text_w = text_size.w + 2; // +2 px safety margin
 
+  // Resolve icon image and its size
+  WeatherIconType icon = s_has_data ? s_icon : WeatherIconUnknown;
+  if (icon > WeatherIconUnknown) icon = WeatherIconUnknown;
+  GDrawCommandImage *img = s_icon_imgs[icon];
+  GSize  icon_size = img ? gdraw_command_image_get_bounds_size(img) : GSize(0, 0);
+  int    icon_w    = icon_size.w;
+  int    icon_h    = icon_size.h;
+
   // Center the full widget (icon + gap + text) on the X axis
-  int total_w = ICON_W + GAP + text_w;
+  int total_w = icon_w + (icon_w > 0 ? GAP : 0) + text_w;
   int start_x = (w - total_w) / 2;
   int cy      = lh / 2;
 
   // Draw icon
-  WeatherIconType icon = s_has_data ? s_icon : WeatherIconUnknown;
-  if (icon < 7 && s_icon_fns[icon] != NULL) {
-    GPoint icon_origin = GPoint(start_x, cy - ICON_H / 2);
-    s_icon_fns[icon](ctx, icon_origin);
+  if (img) {
+    GPoint icon_origin = GPoint(start_x, cy - icon_h / 2);
+    gdraw_command_image_draw(ctx, img, icon_origin);
   }
 
   // Draw temperature text
   graphics_context_set_text_color(ctx, GColorWhite);
   GRect text_rect = GRect(
-    start_x + ICON_W + GAP,
+    start_x + icon_w + (icon_w > 0 ? GAP : 0),
     cy - TEXT_H / 2,
     text_w,
     TEXT_H
@@ -200,14 +112,18 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
 // ============================================================================
 
 Layer* weather_layer_create(GRect bounds, Layer *parent) {
+  // Load icon PDC resources once at create time, inverting their colors
+  for (int i = 0; i < 8; i++) {
+    s_icon_imgs[i] = gdraw_command_image_create_with_resource(s_icon_resources[i]);
+    invert_image_colors(s_icon_imgs[i]);
+  }
+
   // Place widget just below the 12 o'clock hour-number label, inside the
   // clock face interior — no overlap with ring, markers, or hour numbers.
-  // Formula: top of 12 o'clock text = s_center.y - (face_h_edge - num_offset) - 16
-  //          bottom of same text    =                                          + 16
   int face_h_edge  = s_h_radius - (CLOCK_FACE_STROKE_WIDTH / 2);
   int num_offset   = MAJOR_MARKER_LENGTH + s_num_offset;
   int label_bottom = s_center.y - (face_h_edge - num_offset) + 16;
-  int layer_y      = label_bottom + 6;   // 6 px gap below the "12" label
+  int layer_y      = label_bottom + 6;
   int layer_h      = 30;
   GRect layer_bounds = GRect(0, layer_y, bounds.size.w, layer_h);
   s_weather_layer = layer_create(layer_bounds);
@@ -224,6 +140,12 @@ void weather_layer_set_data(int temp_c, WeatherIconType icon) {
 }
 
 void weather_layer_destroy(void) {
+  for (int i = 0; i < 8; i++) {
+    if (s_icon_imgs[i]) {
+      gdraw_command_image_destroy(s_icon_imgs[i]);
+      s_icon_imgs[i] = NULL;
+    }
+  }
   if (s_weather_layer) {
     layer_destroy(s_weather_layer);
     s_weather_layer = NULL;
