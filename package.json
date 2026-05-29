@@ -1,12 +1,12 @@
 {
-  "name": "simple-watchface",
+  "name": "analog-pretty",
   "author": "Me",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "keywords": ["pebble-app"],
   "private": true,
   "dependencies": {},
   "pebble": {
-    "displayName": "simple-watchface",
+    "displayName": "Analog Pretty",
     "uuid": "2b025d01-71bf-42e6-a30a-0f4be455ab47",
     "sdkVersion": "3",
     "enableMultiJS": true,
