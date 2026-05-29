@@ -55,8 +55,8 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
   int lh = bounds.size.h;
 
   const int GAP    = 4;
-  const int TEXT_H = 26;
-  const int MAX_TEXT_W = 56; // enough for "-99°C"
+  const int TEXT_H = 32;
+  const int MAX_TEXT_W = 72; // enough for "-99°C"
 
   // Build text first so we can measure it
   static char temp_buf[8];
@@ -65,7 +65,7 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
   } else {
     snprintf(temp_buf, sizeof(temp_buf), "--" "\xc2\xb0" "C");
   }
-  GFont weather_font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+  GFont weather_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
 
   // Measure actual rendered text width so centering uses real content width
   GSize text_size = graphics_text_layout_get_content_size(
@@ -124,7 +124,7 @@ Layer* weather_layer_create(GRect bounds, Layer *parent) {
   int num_offset   = MAJOR_MARKER_LENGTH + s_num_offset;
   int label_bottom = s_center.y - (face_h_edge - num_offset) + 16;
   int layer_y      = label_bottom + 6;
-  int layer_h      = 30;
+  int layer_h      = 36;
   GRect layer_bounds = GRect(0, layer_y, bounds.size.w, layer_h);
   s_weather_layer = layer_create(layer_bounds);
   layer_set_update_proc(s_weather_layer, weather_update_proc);

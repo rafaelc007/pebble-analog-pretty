@@ -43,9 +43,9 @@ static void draw_date_widget(GContext *ctx, struct tm *t) {
   int dot_bottom  = s_center.y + CENTER_DOT_RADIUS;
   int mid_y       = (dot_bottom + six_top) / 2;
 
-  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
   graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(WATCHFACE_THEME_COLOR, GColorWhite));
-  GRect text_rect = GRect(s_center.x - 40, mid_y - 12, 80, 24);
+  GRect text_rect = GRect(s_center.x - 50, mid_y - 15, 100, 30);
   graphics_draw_text(ctx, date_buffer, font,
                      text_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 }
