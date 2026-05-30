@@ -1,6 +1,5 @@
 #include "layer_hands.h"
 #include "watchface.h"
-#include "layer_face.h"
 
 // ============================================================================
 // PRIVATE STATE
@@ -31,27 +30,6 @@ static void seconds_timer_callback(void *context) {
 // ============================================================================
 // PRIVATE DRAWING FUNCTIONS
 // ============================================================================
-
-static void draw_date_widget(GContext *ctx, struct tm *t) {
-  static const char * const WEEKDAYS[] = {
-    "SUN","MON","TUE","WED","THU","FRI","SAT"
-  };
-  static char date_buffer[8]; // "SAT-31\0"
-  snprintf(date_buffer, sizeof(date_buffer), "%s-%d", WEEKDAYS[t->tm_wday], t->tm_mday);
-
-  // Center vertically between the center dot (bottom) and the "6" hour label (top)
-  int face_h_edge = s_h_radius - (CLOCK_FACE_STROKE_WIDTH / 2);
-  int num_offset  = MAJOR_MARKER_LENGTH + s_num_offset;
-  int six_top     = s_center.y + (face_h_edge - num_offset) - 16;
-  int dot_bottom  = s_center.y + CENTER_DOT_RADIUS;
-  int mid_y       = (dot_bottom + six_top) / 2;
-
-  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
-  graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(WATCHFACE_THEME_COLOR, GColorWhite));
-  GRect text_rect = GRect(s_center.x - 50, mid_y - 15, 100, 30);
-  graphics_draw_text(ctx, date_buffer, font,
-                     text_rect, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
-}
 
 static void draw_clock_hands(GContext *ctx, struct tm *t) {
   static uint8_t hour_thickness = HOUR_HAND_WIDTH / 2;
@@ -102,8 +80,6 @@ static void hands_update_proc(Layer *layer, GContext *ctx) {
   struct tm *t  = localtime(&now);
 
   graphics_context_set_antialiased(ctx, false);
-  face_layer_update_hour(t->tm_hour);
-  draw_date_widget(ctx, t);
   draw_clock_hands(ctx, t);
 }
 

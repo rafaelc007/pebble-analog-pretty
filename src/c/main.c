@@ -3,6 +3,7 @@
 #include "layer_face.h"
 #include "layer_hands.h"
 #include "layer_weather.h"
+#include "layer_date.h"
 
 // ============================================================================
 // PRIVATE STATE
@@ -19,25 +20,29 @@ static Window *s_main_window;
 
 // Ask pkjs to refetch and resend weather. Sends a 1-key AppMessage with the
 // pre-existing `dummy` key, which the pkjs `appmessage` handler treats as a
-// "please refresh" signal.
+// "please refresh" signal. Skips when the phone is disconnected to avoid
+// pointless outbox attempts and JS runtime wake-ups.
 static void request_weather_refresh(void) {
+  if (!connection_service_peek_pebble_app_connection()) return;
   DictionaryIterator *iter;
   if (app_message_outbox_begin(&iter) != APP_MSG_OK) return;
   dict_write_uint8(iter, MESSAGE_KEY_dummy, 1);
   app_message_outbox_send();
 }
 
-// Marks the hands layer dirty every tick. Also triggers an hourly weather
-// refresh by piggybacking on the existing tick — no extra timers or wakeups.
+// Marks the hands layer dirty every tick. Also bubbles HOUR_UNIT / DAY_UNIT
+// changes to the relevant static layers, and triggers an hourly weather
+// refresh — all piggybacking on the existing tick, no extra timers.
 void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   // Exposed externally so layer_hands.c can restore it after seconds hide
   hands_layer_mark_dirty();
 
-  // Refresh weather once per hour boundary. units_changed includes HOUR_UNIT
-  // on the first tick after the hour rolls over, regardless of whether we're
-  // currently in MINUTE_UNIT or SECOND_UNIT mode.
   if (units_changed & HOUR_UNIT) {
+    face_layer_update_hour(tick_time->tm_hour);
     request_weather_refresh();
+  }
+  if (units_changed & DAY_UNIT) {
+    date_layer_mark_dirty();
   }
 }
 
@@ -80,16 +85,24 @@ static void main_window_load(Window *window) {
   // Init shared geometry and font once
   watchface_geometry_init(bounds);
 
-  // Create layers in draw order: face (bottom), weather, then hands on top
+  // Create layers in draw order: face (bottom), weather, date, then hands on top
   face_layer_create(bounds, root);
   weather_layer_create(bounds, root);
+  date_layer_create(bounds, root);
   hands_layer_create(bounds, root);
+
+  // Initial hour highlight — done here since the hands layer no longer
+  // updates it on every minute tick.
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+  face_layer_update_hour(t->tm_hour);
 }
 
 static void main_window_unload(Window *window) {
   face_layer_destroy();
   hands_layer_destroy();
   weather_layer_destroy();
+  date_layer_destroy();
 }
 
 // ============================================================================
@@ -120,7 +133,7 @@ static void init(void) {
 
   // AppMessage — receive weather and settings from pkjs
   app_message_register_inbox_received(inbox_received_callback);
-  app_message_open(128, 0);
+  app_message_open(128, 32);
 }
 
 static void deinit(void) {

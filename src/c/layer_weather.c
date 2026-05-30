@@ -9,7 +9,9 @@ static Layer              *s_weather_layer;
 static int                 s_temp_c    = 0;
 static WeatherIconType     s_icon      = WeatherIconUnknown;
 static bool                s_has_data  = false;
-static GDrawCommandImage  *s_icon_imgs[8];
+static GDrawCommandImage  *s_current_img = NULL;
+static WeatherIconType     s_loaded_icon = (WeatherIconType)-1;
+static char                s_temp_buf[8] = "--\xc2\xb0" "C";
 
 static const uint32_t s_icon_resources[8] = {
   RESOURCE_ID_ICON_CLEAR,    // 0
@@ -44,6 +46,19 @@ static void invert_image_colors(GDrawCommandImage *img) {
   gdraw_command_list_iterate(list, invert_command_colors, NULL);
 }
 
+// Load only the currently-needed icon, releasing any previously loaded one.
+static GDrawCommandImage* get_icon_image(WeatherIconType icon) {
+  if (s_current_img && s_loaded_icon == icon) return s_current_img;
+  if (s_current_img) {
+    gdraw_command_image_destroy(s_current_img);
+    s_current_img = NULL;
+  }
+  s_current_img = gdraw_command_image_create_with_resource(s_icon_resources[icon]);
+  invert_image_colors(s_current_img);
+  s_loaded_icon = icon;
+  return s_current_img;
+}
+
 // ============================================================================
 // LAYER UPDATE PROC
 // ============================================================================
@@ -58,18 +73,11 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
   const int TEXT_H = 32;
   const int MAX_TEXT_W = 72; // enough for "-99°C"
 
-  // Build text first so we can measure it
-  static char temp_buf[8];
-  if (s_has_data) {
-    snprintf(temp_buf, sizeof(temp_buf), "%d" "\xc2\xb0" "C", s_temp_c);
-  } else {
-    snprintf(temp_buf, sizeof(temp_buf), "--" "\xc2\xb0" "C");
-  }
   GFont weather_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
 
   // Measure actual rendered text width so centering uses real content width
   GSize text_size = graphics_text_layout_get_content_size(
-    temp_buf, weather_font,
+    s_temp_buf, weather_font,
     GRect(0, 0, MAX_TEXT_W, TEXT_H),
     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft
   );
@@ -78,7 +86,7 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
   // Resolve icon image and its size
   WeatherIconType icon = s_has_data ? s_icon : WeatherIconUnknown;
   if (icon > WeatherIconUnknown) icon = WeatherIconUnknown;
-  GDrawCommandImage *img = s_icon_imgs[icon];
+  GDrawCommandImage *img = get_icon_image(icon);
   GSize  icon_size = img ? gdraw_command_image_get_bounds_size(img) : GSize(0, 0);
   int    icon_w    = icon_size.w;
   int    icon_h    = icon_size.h;
@@ -102,7 +110,7 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
     text_w,
     TEXT_H
   );
-  graphics_draw_text(ctx, temp_buf, weather_font,
+  graphics_draw_text(ctx, s_temp_buf, weather_font,
                      text_rect, GTextOverflowModeTrailingEllipsis,
                      GTextAlignmentLeft, NULL);
 }
@@ -112,11 +120,7 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
 // ============================================================================
 
 Layer* weather_layer_create(GRect bounds, Layer *parent) {
-  // Load icon PDC resources once at create time, inverting their colors
-  for (int i = 0; i < 8; i++) {
-    s_icon_imgs[i] = gdraw_command_image_create_with_resource(s_icon_resources[i]);
-    invert_image_colors(s_icon_imgs[i]);
-  }
+  // Icons are now loaded lazily on first draw; nothing to do here.
 
   // Place widget just below the 12 o'clock hour-number label, inside the
   // clock face interior — no overlap with ring, markers, or hour numbers.
@@ -136,15 +140,15 @@ void weather_layer_set_data(int temp_c, WeatherIconType icon) {
   s_temp_c   = temp_c;
   s_icon     = icon;
   s_has_data = true;
+  // Re-format the temperature string once here, not on every repaint.
+  snprintf(s_temp_buf, sizeof(s_temp_buf), "%d" "\xc2\xb0" "C", s_temp_c);
   if (s_weather_layer) layer_mark_dirty(s_weather_layer);
 }
 
 void weather_layer_destroy(void) {
-  for (int i = 0; i < 8; i++) {
-    if (s_icon_imgs[i]) {
-      gdraw_command_image_destroy(s_icon_imgs[i]);
-      s_icon_imgs[i] = NULL;
-    }
+  if (s_current_img) {
+    gdraw_command_image_destroy(s_current_img);
+    s_current_img = NULL;
   }
   if (s_weather_layer) {
     layer_destroy(s_weather_layer);

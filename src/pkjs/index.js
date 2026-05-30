@@ -102,7 +102,10 @@ function buildConfigUrl(settings) {
 // ---------------------------------------------------------------------------
 var xhrRequest = function(url, type, callback) {
   var xhr = new XMLHttpRequest();
+  xhr.timeout = 20000;
   xhr.onload = function() { callback(this.responseText); };
+  xhr.onerror = function() { console.log('XHR error for ' + url); };
+  xhr.ontimeout = function() { console.log('XHR timeout for ' + url); };
   xhr.open(type, url);
   xhr.send();
 };
@@ -154,7 +157,9 @@ function fetchWeather() {
   navigator.geolocation.getCurrentPosition(
     locationSuccess,
     locationError,
-    { timeout: 15000, maximumAge: 300000 }
+    // Weather refreshes hourly; reuse a cached fix up to that long to avoid
+    // waking the phone's GPS subsystem every hour.
+    { timeout: 15000, maximumAge: 3600000 }
   );
 }
 
