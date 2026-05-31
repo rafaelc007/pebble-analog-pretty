@@ -9,9 +9,21 @@ static Layer              *s_weather_layer;
 static int                 s_temp_c    = 0;
 static WeatherIconType     s_icon      = WeatherIconUnknown;
 static bool                s_has_data  = false;
+static bool                s_fahrenheit = false;
 static GDrawCommandImage  *s_current_img = NULL;
 static WeatherIconType     s_loaded_icon = (WeatherIconType)-1;
 static char                s_temp_buf[8] = "--\xc2\xb0" "C";
+
+static void format_temp_buf(void) {
+  if (!s_has_data) {
+    snprintf(s_temp_buf, sizeof(s_temp_buf), "--" "\xc2\xb0" "%c",
+             s_fahrenheit ? 'F' : 'C');
+    return;
+  }
+  int t = s_fahrenheit ? (s_temp_c * 9 / 5 + 32) : s_temp_c;
+  snprintf(s_temp_buf, sizeof(s_temp_buf), "%d" "\xc2\xb0" "%c",
+           t, s_fahrenheit ? 'F' : 'C');
+}
 
 static const uint32_t s_icon_resources[8] = {
   RESOURCE_ID_ICON_CLEAR,    // 0
@@ -140,8 +152,14 @@ void weather_layer_set_data(int temp_c, WeatherIconType icon) {
   s_temp_c   = temp_c;
   s_icon     = icon;
   s_has_data = true;
-  // Re-format the temperature string once here, not on every repaint.
-  snprintf(s_temp_buf, sizeof(s_temp_buf), "%d" "\xc2\xb0" "C", s_temp_c);
+  format_temp_buf();
+  if (s_weather_layer) layer_mark_dirty(s_weather_layer);
+}
+
+void weather_layer_set_fahrenheit(bool fahrenheit) {
+  if (s_fahrenheit == fahrenheit) return;
+  s_fahrenheit = fahrenheit;
+  format_temp_buf();
   if (s_weather_layer) layer_mark_dirty(s_weather_layer);
 }
 

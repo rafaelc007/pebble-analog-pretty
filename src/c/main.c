@@ -13,6 +13,7 @@ static Window *s_main_window;
 
 #define PERSIST_KEY_SHAKE_SECONDS 1
 #define PERSIST_KEY_SECONDS_DURATION 2
+#define PERSIST_KEY_TEMPERATURE_UNIT 3
 
 // ============================================================================
 // EVENT HANDLERS
@@ -55,6 +56,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   Tuple *icon_tuple  = dict_find(iterator, MESSAGE_KEY_WEATHER_ICON);
   Tuple *shake_tuple = dict_find(iterator, MESSAGE_KEY_SHAKE_SECONDS_ENABLED);
   Tuple *dur_tuple   = dict_find(iterator, MESSAGE_KEY_SECONDS_DURATION);
+  Tuple *unit_tuple  = dict_find(iterator, MESSAGE_KEY_TEMPERATURE_UNIT);
 
   if (temp_tuple && icon_tuple) {
     weather_layer_set_data(
@@ -75,6 +77,12 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     uint32_t duration_ms = (uint32_t)seconds * 1000;
     persist_write_int(PERSIST_KEY_SECONDS_DURATION, (int32_t)duration_ms);
     hands_layer_set_seconds_duration(duration_ms);
+  }
+
+  if (unit_tuple) {
+    bool fahrenheit = (unit_tuple->value->int32 != 0);
+    persist_write_bool(PERSIST_KEY_TEMPERATURE_UNIT, fahrenheit);
+    weather_layer_set_fahrenheit(fahrenheit);
   }
 }
 
@@ -130,6 +138,12 @@ static void init(void) {
     uint32_t duration_ms = (uint32_t)persist_read_int(PERSIST_KEY_SECONDS_DURATION);
     hands_layer_set_seconds_duration(duration_ms);
   }
+
+  // Apply persisted temperature unit preference (default: Celsius)
+  bool fahrenheit = persist_exists(PERSIST_KEY_TEMPERATURE_UNIT)
+    ? persist_read_bool(PERSIST_KEY_TEMPERATURE_UNIT)
+    : false;
+  weather_layer_set_fahrenheit(fahrenheit);
 
   // AppMessage — receive weather and settings from pkjs
   app_message_register_inbox_received(inbox_received_callback);

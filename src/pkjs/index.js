@@ -17,10 +17,11 @@ function loadSettings() {
       var s = JSON.parse(raw);
       if (typeof s.shakeSecondsEnabled === 'undefined') s.shakeSecondsEnabled = true;
       if (typeof s.secondsDuration === 'undefined') s.secondsDuration = 10;
+      if (s.temperatureUnit !== 'f') s.temperatureUnit = 'c';
       return s;
     }
   } catch (e) {}
-  return { shakeSecondsEnabled: true, secondsDuration: 10 };
+  return { shakeSecondsEnabled: true, secondsDuration: 10, temperatureUnit: 'c' };
 }
 
 function saveSettings(s) {
@@ -31,7 +32,8 @@ function sendSettings(s) {
   Pebble.sendAppMessage(
     {
       'SHAKE_SECONDS_ENABLED': s.shakeSecondsEnabled ? 1 : 0,
-      'SECONDS_DURATION': s.secondsDuration | 0
+      'SECONDS_DURATION': s.secondsDuration | 0,
+      'TEMPERATURE_UNIT': (s.temperatureUnit === 'f') ? 1 : 0
     },
     function() { console.log('Settings sent to Pebble'); },
     function() { console.log('Error sending settings to Pebble'); }
@@ -50,6 +52,8 @@ function buildConfigUrl(settings) {
     var sel = (v === settings.secondsDuration) ? ' selected' : '';
     optsHtml += '<option value="' + v + '"' + sel + '>' + v + ' seconds</option>';
   }
+  var unitCSel = (settings.temperatureUnit !== 'f') ? ' selected' : '';
+  var unitFSel = (settings.temperatureUnit === 'f') ? ' selected' : '';
   var html =
     '<!DOCTYPE html><html><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -84,12 +88,26 @@ function buildConfigUrl(settings) {
         '<select id="dur">' + optsHtml + '</select>' +
       '</div>' +
     '</div>' +
+    '<h1>Weather</h1>' +
+    '<div class="section">' +
+      '<div class="row">' +
+        '<div class="label">' +
+          '<div class="title">Temperature unit</div>' +
+          '<div class="desc">Units for the weather widget display.</div>' +
+        '</div>' +
+        '<select id="unit">' +
+          '<option value="c"' + unitCSel + '>Celsius (\u00b0C)</option>' +
+          '<option value="f"' + unitFSel + '>Fahrenheit (\u00b0F)</option>' +
+        '</select>' +
+      '</div>' +
+    '</div>' +
     '<button id="save">Save</button>' +
     '<script>' +
     'document.getElementById("save").addEventListener("click",function(){' +
     'var out={' +
     'shakeSecondsEnabled:document.getElementById("shake").checked,' +
-    'secondsDuration:parseInt(document.getElementById("dur").value,10)' +
+    'secondsDuration:parseInt(document.getElementById("dur").value,10),' +
+    'temperatureUnit:document.getElementById("unit").value' +
     '};' +
     'document.location="pebblejs://close#"+encodeURIComponent(JSON.stringify(out));' +
     '});' +
