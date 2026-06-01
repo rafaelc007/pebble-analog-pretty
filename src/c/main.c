@@ -55,7 +55,6 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 // ============================================================================
 
 static void connection_handler(bool connected) {
-  APP_LOG(APP_LOG_LEVEL_INFO, "connection_handler: connected=%d", connected);
   weather_layer_set_connected(connected);
 }
 
@@ -96,12 +95,12 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     bool fahrenheit = (unit_tuple->value->int32 != 0);
     persist_write_bool(PERSIST_KEY_TEMPERATURE_UNIT, fahrenheit);
     weather_layer_set_fahrenheit(fahrenheit);
+  }
 
   if (theme_tuple) {
     uint8_t argb = (uint8_t)theme_tuple->value->int32;
     persist_write_int(PERSIST_KEY_THEME_COLOR, (int32_t)argb);
     watchface_set_theme_color(argb);
-  }
   }
 }
 
