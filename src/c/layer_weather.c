@@ -12,6 +12,8 @@ static bool                s_has_data  = false;
 static bool                s_fahrenheit = false;
 static GDrawCommandImage  *s_current_img = NULL;
 static WeatherIconType     s_loaded_icon = (WeatherIconType)-1;
+static GDrawCommandImage  *s_disconnect_img = NULL;
+static bool                s_connected = true;
 static char                s_temp_buf[8] = "--\xc2\xb0" "C";
 
 static void format_temp_buf(void) {
@@ -81,6 +83,15 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
   int w  = bounds.size.w;
   int lh = bounds.size.h;
 
+  // Phone is unreachable — draw a centered disconnect glyph in place of the
+  // weather widget.
+  if (!s_connected && s_disconnect_img) {
+    GSize sz = gdraw_command_image_get_bounds_size(s_disconnect_img);
+    GPoint origin = GPoint((w - sz.w) / 2, (lh - sz.h) / 2);
+    gdraw_command_image_draw(ctx, s_disconnect_img, origin);
+    return;
+  }
+
   const int GAP    = 4;
   const int TEXT_H = 32;
   const int MAX_TEXT_W = 72; // enough for "-99°C"
@@ -132,7 +143,13 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
 // ============================================================================
 
 Layer* weather_layer_create(GRect bounds, Layer *parent) {
-  // Icons are now loaded lazily on first draw; nothing to do here.
+  // Weather icons are loaded lazily on first draw. The disconnect icon is
+  // tiny and may be needed at any moment without a redraw budget, so load
+  // it once here.
+  if (!s_disconnect_img) {
+    s_disconnect_img = gdraw_command_image_create_with_resource(RESOURCE_ID_ICON_DISCONNECT);
+    invert_image_colors(s_disconnect_img);
+  }
 
   // Place widget just below the 12 o'clock hour-number label, inside the
   // clock face interior — no overlap with ring, markers, or hour numbers.
@@ -163,10 +180,20 @@ void weather_layer_set_fahrenheit(bool fahrenheit) {
   if (s_weather_layer) layer_mark_dirty(s_weather_layer);
 }
 
+void weather_layer_set_connected(bool connected) {
+  if (s_connected == connected) return;
+  s_connected = connected;
+  if (s_weather_layer) layer_mark_dirty(s_weather_layer);
+}
+
 void weather_layer_destroy(void) {
   if (s_current_img) {
     gdraw_command_image_destroy(s_current_img);
     s_current_img = NULL;
+  }
+  if (s_disconnect_img) {
+    gdraw_command_image_destroy(s_disconnect_img);
+    s_disconnect_img = NULL;
   }
   if (s_weather_layer) {
     layer_destroy(s_weather_layer);

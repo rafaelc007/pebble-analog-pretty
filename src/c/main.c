@@ -51,6 +51,15 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 // ============================================================================
+// CONNECTION SERVICE
+// ============================================================================
+
+static void connection_handler(bool connected) {
+  APP_LOG(APP_LOG_LEVEL_INFO, "connection_handler: connected=%d", connected);
+  weather_layer_set_connected(connected);
+}
+
+// ============================================================================
 // APPMESSAGE — weather data from pkjs
 // ============================================================================
 
@@ -166,6 +175,13 @@ static void init(void) {
   // AppMessage — receive weather and settings from pkjs
   app_message_register_inbox_received(inbox_received_callback);
   app_message_open(128, 32);
+
+  // Track phone connection so the weather widget can fall back to a
+  // disconnect icon when unreachable.
+  weather_layer_set_connected(connection_service_peek_pebble_app_connection());
+  connection_service_subscribe((ConnectionHandlers){
+    .pebble_app_connection_handler = connection_handler,
+  });
 }
 
 static void deinit(void) {

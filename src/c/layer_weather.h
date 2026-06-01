@@ -23,5 +23,9 @@ void weather_layer_set_data(int temp_c, WeatherIconType icon);
 // false = Celsius (default), true = Fahrenheit. Persisted by main.c.
 void weather_layer_set_fahrenheit(bool fahrenheit);
 
+// Toggle phone-connection state. When disconnected, the widget swaps the
+// weather glyph + temperature for a disconnect icon.
+void weather_layer_set_connected(bool connected);
+
 // Destroys the weather layer — call from main_window_unload.
 void weather_layer_destroy(void);
