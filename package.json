@@ -28,7 +28,8 @@
       "WEATHER_ICON",
       "SHAKE_SECONDS_ENABLED",
       "SECONDS_DURATION",
-      "TEMPERATURE_UNIT"
+      "TEMPERATURE_UNIT",
+      "THEME_COLOR"
     ],
     "resources": {
       "media": [

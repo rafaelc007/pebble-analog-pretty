@@ -10,6 +10,20 @@
 // ---------------------------------------------------------------------------
 var SETTINGS_KEY = 'simple_watchface_settings';
 
+// Theme color choices — argb8 byte values matching Pebble's GColor enum.
+// (2 bits per channel: AARRGGBB)
+var THEME_COLORS = [
+  { name: 'Cyan',    argb: 0xCF, css: '#00ffff' },
+  { name: 'Green',   argb: 0xCC, css: '#00ff00' },
+  { name: 'Yellow',  argb: 0xFC, css: '#ffff00' },
+  { name: 'Orange',  argb: 0xF8, css: '#ffaa00' },
+  { name: 'Red',     argb: 0xF0, css: '#ff0000' },
+  { name: 'Magenta', argb: 0xF3, css: '#ff00ff' },
+  { name: 'Blue',    argb: 0xC3, css: '#0000ff' },
+  { name: 'White',   argb: 0xFF, css: '#ffffff' }
+];
+var DEFAULT_THEME_ARGB = 0xCF; // Cyan
+
 function loadSettings() {
   try {
     var raw = localStorage.getItem(SETTINGS_KEY);
@@ -18,10 +32,16 @@ function loadSettings() {
       if (typeof s.shakeSecondsEnabled === 'undefined') s.shakeSecondsEnabled = true;
       if (typeof s.secondsDuration === 'undefined') s.secondsDuration = 10;
       if (s.temperatureUnit !== 'f') s.temperatureUnit = 'c';
+      if (typeof s.themeColor !== 'number') s.themeColor = DEFAULT_THEME_ARGB;
       return s;
     }
   } catch (e) {}
-  return { shakeSecondsEnabled: true, secondsDuration: 10, temperatureUnit: 'c' };
+  return {
+    shakeSecondsEnabled: true,
+    secondsDuration: 10,
+    temperatureUnit: 'c',
+    themeColor: DEFAULT_THEME_ARGB
+  };
 }
 
 function saveSettings(s) {
@@ -33,7 +53,8 @@ function sendSettings(s) {
     {
       'SHAKE_SECONDS_ENABLED': s.shakeSecondsEnabled ? 1 : 0,
       'SECONDS_DURATION': s.secondsDuration | 0,
-      'TEMPERATURE_UNIT': (s.temperatureUnit === 'f') ? 1 : 0
+      'TEMPERATURE_UNIT': (s.temperatureUnit === 'f') ? 1 : 0,
+      'THEME_COLOR': s.themeColor | 0
     },
     function() { console.log('Settings sent to Pebble'); },
     function() { console.log('Error sending settings to Pebble'); }
@@ -54,6 +75,18 @@ function buildConfigUrl(settings) {
   }
   var unitCSel = (settings.temperatureUnit !== 'f') ? ' selected' : '';
   var unitFSel = (settings.temperatureUnit === 'f') ? ' selected' : '';
+
+  var colorOptsHtml = '';
+  var swatchCss = '';
+  var currentColor = THEME_COLORS[0];
+  for (var c = 0; c < THEME_COLORS.length; c++) {
+    var tc = THEME_COLORS[c];
+    var csel = (tc.argb === settings.themeColor) ? ' selected' : '';
+    colorOptsHtml += '<option value="' + tc.argb + '"' + csel + '>' + tc.name + '</option>';
+    swatchCss += '.sw-' + tc.argb + '{background:' + tc.css + ';}';
+    if (tc.argb === settings.themeColor) currentColor = tc;
+  }
+
   var html =
     '<!DOCTYPE html><html><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -69,6 +102,8 @@ function buildConfigUrl(settings) {
     '.desc{font-size:13px;color:#9a9a9a;margin-top:4px;}' +
     'input[type=checkbox]{transform:scale(1.6);margin-left:16px;accent-color:#00aaff;}' +
     'select{margin-left:16px;background:#2a2a2a;color:#eee;border:0;padding:8px 10px;border-radius:6px;font-size:15px;}' +
+    '.swatch{display:inline-block;width:22px;height:22px;border-radius:50%;border:2px solid #444;vertical-align:middle;margin-left:12px;}' +
+    swatchCss +
     'button{display:block;width:100%;padding:14px;border-radius:8px;border:0;font-size:16px;font-weight:600;background:#00aaff;color:#fff;}' +
     '</style></head><body>' +
     '<h1>Seconds Hand</h1>' +
@@ -101,13 +136,29 @@ function buildConfigUrl(settings) {
         '</select>' +
       '</div>' +
     '</div>' +
+    '<h1>Theme</h1>' +
+    '<div class="section">' +
+      '<div class="row">' +
+        '<div class="label">' +
+          '<div class="title">Accent color</div>' +
+          '<div class="desc">Color used for the seconds hand, center dot, and date. (Color watches only.)</div>' +
+        '</div>' +
+        '<span id="swatch" class="swatch sw-' + currentColor.argb + '"></span>' +
+        '<select id="color">' + colorOptsHtml + '</select>' +
+      '</div>' +
+    '</div>' +
     '<button id="save">Save</button>' +
     '<script>' +
+    'var sel=document.getElementById("color");' +
+    'sel.addEventListener("change",function(){' +
+    'document.getElementById("swatch").className="swatch sw-"+sel.value;' +
+    '});' +
     'document.getElementById("save").addEventListener("click",function(){' +
     'var out={' +
     'shakeSecondsEnabled:document.getElementById("shake").checked,' +
     'secondsDuration:parseInt(document.getElementById("dur").value,10),' +
-    'temperatureUnit:document.getElementById("unit").value' +
+    'temperatureUnit:document.getElementById("unit").value,' +
+    'themeColor:parseInt(sel.value,10)' +
     '};' +
     'document.location="pebblejs://close#"+encodeURIComponent(JSON.stringify(out));' +
     '});' +

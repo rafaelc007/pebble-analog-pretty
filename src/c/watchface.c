@@ -1,4 +1,6 @@
 #include "watchface.h"
+#include "layer_hands.h"
+#include "layer_date.h"
 
 // ============================================================================
 // SHARED STATE DEFINITIONS
@@ -12,6 +14,13 @@ int    s_h_radius;
 GFont  s_font;
 GFont  date_font;
 int    s_num_offset;
+GColor s_theme_color;
+
+void watchface_set_theme_color(uint8_t argb) {
+  s_theme_color = (GColor){ .argb = argb };
+  hands_layer_mark_dirty();
+  date_layer_mark_dirty();
+}
 
 // ============================================================================
 // GEOMETRY INIT 

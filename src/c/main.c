@@ -14,6 +14,9 @@ static Window *s_main_window;
 #define PERSIST_KEY_SHAKE_SECONDS 1
 #define PERSIST_KEY_SECONDS_DURATION 2
 #define PERSIST_KEY_TEMPERATURE_UNIT 3
+#define PERSIST_KEY_THEME_COLOR 4
+
+#define DEFAULT_THEME_COLOR_ARGB 0b11001111  // GColorCyan
 
 // ============================================================================
 // EVENT HANDLERS
@@ -54,6 +57,7 @@ void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   Tuple *temp_tuple  = dict_find(iterator, MESSAGE_KEY_TEMPERATURE);
   Tuple *icon_tuple  = dict_find(iterator, MESSAGE_KEY_WEATHER_ICON);
+  Tuple *theme_tuple = dict_find(iterator, MESSAGE_KEY_THEME_COLOR);
   Tuple *shake_tuple = dict_find(iterator, MESSAGE_KEY_SHAKE_SECONDS_ENABLED);
   Tuple *dur_tuple   = dict_find(iterator, MESSAGE_KEY_SECONDS_DURATION);
   Tuple *unit_tuple  = dict_find(iterator, MESSAGE_KEY_TEMPERATURE_UNIT);
@@ -83,6 +87,12 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     bool fahrenheit = (unit_tuple->value->int32 != 0);
     persist_write_bool(PERSIST_KEY_TEMPERATURE_UNIT, fahrenheit);
     weather_layer_set_fahrenheit(fahrenheit);
+
+  if (theme_tuple) {
+    uint8_t argb = (uint8_t)theme_tuple->value->int32;
+    persist_write_int(PERSIST_KEY_THEME_COLOR, (int32_t)argb);
+    watchface_set_theme_color(argb);
+  }
   }
 }
 
@@ -124,6 +134,14 @@ static void init(void) {
     .load   = main_window_load,
     .unload = main_window_unload
   });
+
+  // Apply persisted theme color (default: cyan). Must happen before the
+  // window loads so the first draw uses the right color.
+  uint8_t theme_argb = persist_exists(PERSIST_KEY_THEME_COLOR)
+    ? (uint8_t)persist_read_int(PERSIST_KEY_THEME_COLOR)
+    : DEFAULT_THEME_COLOR_ARGB;
+  watchface_set_theme_color(theme_argb);
+
   window_stack_push(s_main_window, true);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
 

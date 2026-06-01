@@ -32,7 +32,12 @@
 
 #define HOUR_NUMBER_INACTIVE_COLOR  PBL_IF_COLOR_ELSE(GColorDarkGray, GColorDarkGray)
 #define HOUR_NUMBER_ACTIVE_COLOR    GColorWhite
-#define WATCHFACE_THEME_COLOR       GColorCyan
+
+// Theme color is runtime-configurable via the settings menu.
+// Read via the WATCHFACE_THEME_COLOR macro; set via watchface_set_theme_color().
+extern GColor s_theme_color;
+#define WATCHFACE_THEME_COLOR       s_theme_color
+void watchface_set_theme_color(uint8_t argb);
 
 // ============================================================================
 // SHARED GEOMETRY STATE — owned by watchface.c, read by all modules
