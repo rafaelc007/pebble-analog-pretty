@@ -95,7 +95,7 @@ Layer* hands_layer_create(GRect bounds, Layer *parent) {
 }
 
 void hands_layer_mark_dirty(void) {
-  layer_mark_dirty(s_hands_layer);
+  if (s_hands_layer) layer_mark_dirty(s_hands_layer);
 }
 
 void hands_layer_destroy(void) {
