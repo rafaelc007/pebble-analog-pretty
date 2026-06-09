@@ -9,6 +9,7 @@ static Layer    *s_hands_layer;
 static bool      s_show_seconds   = false;
 static bool      s_shake_enabled  = true;
 static bool      s_accel_subscribed = false;
+static bool      s_seconds_always_on = false;
 static AppTimer *s_seconds_timer = NULL;
 static uint32_t  s_seconds_duration = SECONDS_DISPLAY_DURATION_DEFAULT;
 
@@ -19,6 +20,8 @@ static uint32_t  s_seconds_duration = SECONDS_DISPLAY_DURATION_DEFAULT;
 // Called when the 10-second display window expires
 static void seconds_timer_callback(void *context) {
   s_seconds_timer = NULL;
+  // Defensive: if always-on flipped on between scheduling and firing, leave state alone
+  if (s_seconds_always_on) return;
   s_show_seconds  = false;
 
   // Stop per-second ticks — back to power-efficient minute ticks only
@@ -110,6 +113,7 @@ void hands_layer_destroy(void) {
 
 // Tap handler — registered via accel_tap_service_subscribe when shake-to-show is enabled
 void hands_layer_handle_tap(AccelAxisType axis, int32_t direction) {
+  if (s_seconds_always_on) return;
   if (!s_shake_enabled) return;
 
   // If seconds are already showing, reset the countdown timer
@@ -136,6 +140,39 @@ void hands_layer_handle_tap(AccelAxisType axis, int32_t direction) {
   layer_mark_dirty(s_hands_layer);
 }
 
+void hands_layer_set_seconds_always_on(bool enabled) {
+  if (enabled == s_seconds_always_on) return;
+  s_seconds_always_on = enabled;
+
+  extern void tick_handler(struct tm*, TimeUnits);
+
+  if (enabled) {
+    // Cancel any pending shake-window timer
+    if (s_seconds_timer) {
+      app_timer_cancel(s_seconds_timer);
+      s_seconds_timer = NULL;
+    }
+    // Shake is redundant while seconds are always visible — drop the accel
+    // subscription for the power saving this mode is meant to allow.
+    if (s_accel_subscribed) {
+      accel_tap_service_unsubscribe();
+      s_accel_subscribed = false;
+    }
+    s_show_seconds = true;
+    tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+  } else {
+    s_show_seconds = false;
+    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+    // Restore accel subscription if the user still wants shake-to-show
+    if (s_shake_enabled && !s_accel_subscribed) {
+      accel_tap_service_subscribe(hands_layer_handle_tap);
+      s_accel_subscribed = true;
+    }
+  }
+
+  if (s_hands_layer) layer_mark_dirty(s_hands_layer);
+}
+
 void hands_layer_set_seconds_duration(uint32_t duration_ms) {
   if (duration_ms < SECONDS_DISPLAY_DURATION_MIN) duration_ms = SECONDS_DISPLAY_DURATION_MIN;
   if (duration_ms > SECONDS_DISPLAY_DURATION_MAX) duration_ms = SECONDS_DISPLAY_DURATION_MAX;
@@ -149,6 +186,9 @@ void hands_layer_set_seconds_duration(uint32_t duration_ms) {
 void hands_layer_set_shake_enabled(bool enabled) {
   if (enabled == s_shake_enabled && enabled == s_accel_subscribed) return;
   s_shake_enabled = enabled;
+
+  // While always-on owns the accel/tick state, just record the preference.
+  if (s_seconds_always_on) return;
 
   if (enabled && !s_accel_subscribed) {
     accel_tap_service_subscribe(hands_layer_handle_tap);

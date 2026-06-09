@@ -21,3 +21,8 @@ void   hands_layer_set_shake_enabled(bool enabled);
 // Set how long (in milliseconds) the seconds hand stays visible after a shake.
 // Clamped to [SECONDS_DISPLAY_DURATION_MIN, SECONDS_DISPLAY_DURATION_MAX].
 void   hands_layer_set_seconds_duration(uint32_t duration_ms);
+
+// When enabled, the seconds hand is drawn continuously every second and the
+// accelerometer/shake subscription is dropped. When disabled, behavior reverts
+// to per-minute ticks plus shake-to-show (if shake is also enabled).
+void   hands_layer_set_seconds_always_on(bool enabled);

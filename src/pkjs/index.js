@@ -31,6 +31,7 @@ function loadSettings() {
       var s = JSON.parse(raw);
       if (typeof s.shakeSecondsEnabled === 'undefined') s.shakeSecondsEnabled = true;
       if (typeof s.secondsDuration === 'undefined') s.secondsDuration = 10;
+      if (typeof s.secondsAlwaysOn === 'undefined') s.secondsAlwaysOn = false;
       if (s.temperatureUnit !== 'f') s.temperatureUnit = 'c';
       if (typeof s.themeColor !== 'number') s.themeColor = DEFAULT_THEME_ARGB;
       return s;
@@ -40,7 +41,8 @@ function loadSettings() {
     shakeSecondsEnabled: true,
     secondsDuration: 10,
     temperatureUnit: 'c',
-    themeColor: DEFAULT_THEME_ARGB
+    themeColor: DEFAULT_THEME_ARGB,
+    secondsAlwaysOn: false
   };
 }
 
@@ -53,6 +55,7 @@ function sendSettings(s) {
     {
       'SHAKE_SECONDS_ENABLED': s.shakeSecondsEnabled ? 1 : 0,
       'SECONDS_DURATION': s.secondsDuration | 0,
+      'SECONDS_ALWAYS_ON': s.secondsAlwaysOn ? 1 : 0,
       'TEMPERATURE_UNIT': (s.temperatureUnit === 'f') ? 1 : 0,
       'THEME_COLOR': s.themeColor | 0
     },
@@ -66,6 +69,7 @@ function sendSettings(s) {
 // ---------------------------------------------------------------------------
 function buildConfigUrl(settings) {
   var checked = settings.shakeSecondsEnabled ? 'checked' : '';
+  var alwaysChecked = settings.secondsAlwaysOn ? 'checked' : '';
   var durOpts = [3, 5, 10, 15];
   var optsHtml = '';
   for (var i = 0; i < durOpts.length; i++) {
@@ -102,12 +106,22 @@ function buildConfigUrl(settings) {
     '.desc{font-size:13px;color:#9a9a9a;margin-top:4px;}' +
     'input[type=checkbox]{transform:scale(1.6);margin-left:16px;accent-color:#00aaff;}' +
     'select{margin-left:16px;background:#2a2a2a;color:#eee;border:0;padding:8px 10px;border-radius:6px;font-size:15px;}' +
+    'select:disabled,input:disabled{opacity:0.4;}' +
+    '.warn{color:#ff9a00;margin-top:4px;}' +
     '.swatch{display:inline-block;width:22px;height:22px;border-radius:50%;border:2px solid #444;vertical-align:middle;margin-left:12px;}' +
     swatchCss +
     'button{display:block;width:100%;padding:14px;border-radius:8px;border:0;font-size:16px;font-weight:600;background:#00aaff;color:#fff;}' +
     '</style></head><body>' +
     '<h1>Seconds Hand</h1>' +
     '<div class="section">' +
+      '<div class="row">' +
+        '<div class="label">' +
+          '<div class="title">Always show seconds</div>' +
+          '<div class="desc">Keep the seconds hand visible at all times.</div>' +
+          '<div class="desc warn">Warning: significantly increases battery usage.</div>' +
+        '</div>' +
+        '<input id="always" type="checkbox" ' + alwaysChecked + '>' +
+      '</div>' +
       '<div class="row">' +
         '<div class="label">' +
           '<div class="title">Shake to show seconds</div>' +
@@ -153,10 +167,19 @@ function buildConfigUrl(settings) {
     'sel.addEventListener("change",function(){' +
     'document.getElementById("swatch").className="swatch sw-"+sel.value;' +
     '});' +
+    'var always=document.getElementById("always");' +
+    'function syncAlways(){' +
+    'var d=always.checked;' +
+    'document.getElementById("shake").disabled=d;' +
+    'document.getElementById("dur").disabled=d;' +
+    '}' +
+    'always.addEventListener("change",syncAlways);' +
+    'syncAlways();' +
     'document.getElementById("save").addEventListener("click",function(){' +
     'var out={' +
     'shakeSecondsEnabled:document.getElementById("shake").checked,' +
     'secondsDuration:parseInt(document.getElementById("dur").value,10),' +
+    'secondsAlwaysOn:always.checked,' +
     'temperatureUnit:document.getElementById("unit").value,' +
     'themeColor:parseInt(sel.value,10)' +
     '};' +

@@ -28,6 +28,7 @@
       "WEATHER_ICON",
       "SHAKE_SECONDS_ENABLED",
       "SECONDS_DURATION",
+      "SECONDS_ALWAYS_ON",
       "TEMPERATURE_UNIT",
       "THEME_COLOR"
     ],

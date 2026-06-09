@@ -15,6 +15,7 @@ static Window *s_main_window;
 #define PERSIST_KEY_SECONDS_DURATION 2
 #define PERSIST_KEY_TEMPERATURE_UNIT 3
 #define PERSIST_KEY_THEME_COLOR 4
+#define PERSIST_KEY_SECONDS_ALWAYS_ON 5
 
 #define DEFAULT_THEME_COLOR_ARGB 0b11001111  // GColorCyan
 
@@ -68,6 +69,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   Tuple *theme_tuple = dict_find(iterator, MESSAGE_KEY_THEME_COLOR);
   Tuple *shake_tuple = dict_find(iterator, MESSAGE_KEY_SHAKE_SECONDS_ENABLED);
   Tuple *dur_tuple   = dict_find(iterator, MESSAGE_KEY_SECONDS_DURATION);
+  Tuple *always_tuple= dict_find(iterator, MESSAGE_KEY_SECONDS_ALWAYS_ON);
   Tuple *unit_tuple  = dict_find(iterator, MESSAGE_KEY_TEMPERATURE_UNIT);
 
   if (temp_tuple && icon_tuple) {
@@ -89,6 +91,13 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     uint32_t duration_ms = (uint32_t)seconds * 1000;
     persist_write_int(PERSIST_KEY_SECONDS_DURATION, (int32_t)duration_ms);
     hands_layer_set_seconds_duration(duration_ms);
+  }
+
+  // Apply always-on last so it owns the final tick/accel state for this message
+  if (always_tuple) {
+    bool always_on = (always_tuple->value->int32 != 0);
+    persist_write_bool(PERSIST_KEY_SECONDS_ALWAYS_ON, always_on);
+    hands_layer_set_seconds_always_on(always_on);
   }
 
   if (unit_tuple) {
@@ -164,6 +173,13 @@ static void init(void) {
     uint32_t duration_ms = (uint32_t)persist_read_int(PERSIST_KEY_SECONDS_DURATION);
     hands_layer_set_seconds_duration(duration_ms);
   }
+
+  // Apply persisted always-on preference (default: disabled). Must run after
+  // shake/duration so it owns the final tick/accel subscription state.
+  bool always_on = persist_exists(PERSIST_KEY_SECONDS_ALWAYS_ON)
+    ? persist_read_bool(PERSIST_KEY_SECONDS_ALWAYS_ON)
+    : false;
+  hands_layer_set_seconds_always_on(always_on);
 
   // Apply persisted temperature unit preference (default: Celsius)
   bool fahrenheit = persist_exists(PERSIST_KEY_TEMPERATURE_UNIT)
