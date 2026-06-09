@@ -1,7 +1,7 @@
 {
   "name": "analog-pretty",
   "author": "Me",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "keywords": ["pebble-app"],
   "private": true,
   "dependencies": {},
@@ -42,7 +42,13 @@
         { "type": "raw", "name": "ICON_SNOW",    "file": "Pebble_50x50_Light_snow_small.pdc" },
         { "type": "raw", "name": "ICON_STORM",   "file": "Pebble_50x50_Heavy_rain_small.pdc" },
         { "type": "raw", "name": "ICON_UNKNOWN", "file": "Pebble_50x50_Generic_weather_small.pdc" },
-        { "type": "raw", "name": "ICON_DISCONNECT", "file": "disconnect_small.pdc" }
+        { "type": "raw", "name": "ICON_DISCONNECT", "file": "disconnect_small.pdc" },
+        {
+          "file": "menu-icon.png",
+          "name": "APP_ICON",
+          "type": "bitmap",
+          "menuIcon": true
+        }
       ]
     }
   }
