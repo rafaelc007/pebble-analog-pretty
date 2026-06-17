@@ -2,27 +2,32 @@
 #include "watchface.h"
 
 static Layer *s_date_layer;
+static GFont  s_date_font = NULL;      // cached font handle
+static char   s_date_buf[8] = "---";   // pre-formatted "SAT-31\0"
 
-static void date_update_proc(Layer *layer, GContext *ctx) {
-  static const char * const WEEKDAYS[] = {
-    "SUN","MON","TUE","WED","THU","FRI","SAT"
-  };
+static const char * const WEEKDAYS[] = {
+  "SUN","MON","TUE","WED","THU","FRI","SAT"
+};
+
+static void format_date_buf(void) {
   time_t now = time(NULL);
   struct tm *t = localtime(&now);
+  snprintf(s_date_buf, sizeof(s_date_buf), "%s-%d", WEEKDAYS[t->tm_wday], t->tm_mday);
+}
 
-  static char date_buffer[8]; // "SAT-31\0"
-  snprintf(date_buffer, sizeof(date_buffer), "%s-%d", WEEKDAYS[t->tm_wday], t->tm_mday);
-
+static void date_update_proc(Layer *layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(layer);
-  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
 
   graphics_context_set_antialiased(ctx, false);
   graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(WATCHFACE_THEME_COLOR, GColorWhite));
-  graphics_draw_text(ctx, date_buffer, font,
+  graphics_draw_text(ctx, s_date_buf, s_date_font,
                      bounds, GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 }
 
 Layer* date_layer_create(GRect bounds, Layer *parent) {
+  s_date_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+  format_date_buf();
+
   // Centered horizontally, sitting between the center dot and the "6" label
   int face_h_edge = s_h_radius - (CLOCK_FACE_STROKE_WIDTH / 2);
   int num_offset  = MAJOR_MARKER_LENGTH + s_num_offset;
@@ -38,7 +43,9 @@ Layer* date_layer_create(GRect bounds, Layer *parent) {
 }
 
 void date_layer_mark_dirty(void) {
-  if (s_date_layer) layer_mark_dirty(s_date_layer);
+  if (!s_date_layer) return;
+  format_date_buf();
+  layer_mark_dirty(s_date_layer);
 }
 
 void date_layer_destroy(void) {

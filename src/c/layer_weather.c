@@ -15,16 +15,31 @@ static WeatherIconType     s_loaded_icon = (WeatherIconType)-1;
 static GDrawCommandImage  *s_disconnect_img = NULL;
 static bool                s_connected = true;
 static char                s_temp_buf[8] = "--\xc2\xb0" "C";
+static int                 s_text_w    = 0;  // cached rendered text width
+static GFont               s_weather_font = NULL;  // cached font handle
 
 static void format_temp_buf(void) {
   if (!s_has_data) {
     snprintf(s_temp_buf, sizeof(s_temp_buf), "--" "\xc2\xb0" "%c",
              s_fahrenheit ? 'F' : 'C');
-    return;
+  } else {
+    int t = s_fahrenheit ? (s_temp_c * 9 / 5 + 32) : s_temp_c;
+    snprintf(s_temp_buf, sizeof(s_temp_buf), "%d" "\xc2\xb0" "%c",
+             t, s_fahrenheit ? 'F' : 'C');
   }
-  int t = s_fahrenheit ? (s_temp_c * 9 / 5 + 32) : s_temp_c;
-  snprintf(s_temp_buf, sizeof(s_temp_buf), "%d" "\xc2\xb0" "%c",
-           t, s_fahrenheit ? 'F' : 'C');
+
+  // Recompute cached text width whenever the string changes.
+  // Guard: font may not be loaded yet on first call from weather_layer_create.
+  if (s_weather_font) {
+    const int MAX_TEXT_W = 72;
+    const int TEXT_H     = 32;
+    GSize sz = graphics_text_layout_get_content_size(
+      s_temp_buf, s_weather_font,
+      GRect(0, 0, MAX_TEXT_W, TEXT_H),
+      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft
+    );
+    s_text_w = sz.w + 2;
+  }
 }
 
 static const uint32_t s_icon_resources[8] = {
@@ -94,17 +109,6 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
 
   const int GAP    = 4;
   const int TEXT_H = 32;
-  const int MAX_TEXT_W = 72; // enough for "-99°C"
-
-  GFont weather_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
-
-  // Measure actual rendered text width so centering uses real content width
-  GSize text_size = graphics_text_layout_get_content_size(
-    s_temp_buf, weather_font,
-    GRect(0, 0, MAX_TEXT_W, TEXT_H),
-    GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft
-  );
-  int text_w = text_size.w + 2; // +2 px safety margin
 
   // Resolve icon image and its size
   WeatherIconType icon = s_has_data ? s_icon : WeatherIconUnknown;
@@ -114,8 +118,8 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
   int    icon_w    = icon_size.w;
   int    icon_h    = icon_size.h;
 
-  // Center the full widget (icon + gap + text) on the X axis
-  int total_w = icon_w + (icon_w > 0 ? GAP : 0) + text_w;
+  // Center the full widget (icon + gap + text) on the X axis using cached width
+  int total_w = icon_w + (icon_w > 0 ? GAP : 0) + s_text_w;
   int start_x = (w - total_w) / 2;
   int cy      = lh / 2;
 
@@ -130,10 +134,10 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
   GRect text_rect = GRect(
     start_x + icon_w + (icon_w > 0 ? GAP : 0),
     cy - TEXT_H / 2,
-    text_w,
+    s_text_w,
     TEXT_H
   );
-  graphics_draw_text(ctx, s_temp_buf, weather_font,
+  graphics_draw_text(ctx, s_temp_buf, s_weather_font,
                      text_rect, GTextOverflowModeTrailingEllipsis,
                      GTextAlignmentLeft, NULL);
 }
@@ -143,6 +147,9 @@ static void weather_update_proc(Layer *layer, GContext *ctx) {
 // ============================================================================
 
 Layer* weather_layer_create(GRect bounds, Layer *parent) {
+  // Cache the font handle once — avoids a hash-map lookup on every redraw.
+  s_weather_font = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+
   // Weather icons are loaded lazily on first draw. The disconnect icon is
   // tiny and may be needed at any moment without a redraw budget, so load
   // it once here.
@@ -150,6 +157,9 @@ Layer* weather_layer_create(GRect bounds, Layer *parent) {
     s_disconnect_img = gdraw_command_image_create_with_resource(RESOURCE_ID_ICON_DISCONNECT);
     invert_image_colors(s_disconnect_img);
   }
+
+  // Compute the initial cached text width now that the font is available.
+  format_temp_buf();
 
   // Place widget just below the 12 o'clock hour-number label, inside the
   // clock face interior — no overlap with ring, markers, or hour numbers.

@@ -16,6 +16,11 @@ GFont  date_font;
 int    s_num_offset;
 GColor s_theme_color;
 
+int    s_hour_hand_len;
+int    s_minute_hand_len;
+int    s_second_hand_len;
+int    s_second_tail_len;
+
 void watchface_set_theme_color(uint8_t argb) {
   s_theme_color = (GColor){ .argb = argb };
   hands_layer_mark_dirty();
@@ -43,6 +48,14 @@ void watchface_geometry_init(GRect bounds) {
   // Keep the original 20px on large screens (emery s_radius≈98, gabbro≈128);
   // scale down on smaller platforms so numbers sit visually closer to their ticks.
   s_num_offset = (s_radius > 90) ? NUMBER_OFFSET_FROM_MARKER : (s_radius / 5);
+
+  // Precomputed integer hand lengths — avoid soft-float on every tick.
+  // These match the original float ratios (0.50, 0.85, 0.85, 0.20) exactly
+  // at typical radii and never need recomputing.
+  s_hour_hand_len   = s_radius * 50 / 100;
+  s_minute_hand_len = s_radius * 85 / 100;
+  s_second_hand_len = s_radius * 85 / 100;
+  s_second_tail_len = s_radius * 20 / 100;
 }
 
 // ============================================================================

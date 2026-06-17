@@ -16,15 +16,11 @@
 #define DATE_OFFSET_FROM_CENTER    40
 #define SQR_WATCHFACE_RADIOUS      30
 
-#define HOUR_HAND_LENGTH_RATIO     0.50f
-#define MINUTE_HAND_LENGTH_RATIO   0.85f
-
 #define HOUR_HAND_WIDTH           14
 #define MINUTE_HAND_WIDTH          6
 #define CENTER_DOT_RADIUS          6
 
 // Seconds hand — only shown on shake
-#define SECOND_HAND_LENGTH_RATIO  0.85f
 #define SECOND_HAND_WIDTH         2
 #define SECONDS_DISPLAY_DURATION_DEFAULT  10000  // milliseconds (10 seconds)
 #define SECONDS_DISPLAY_DURATION_MIN      3000
@@ -52,6 +48,12 @@ extern int    s_h_radius;
 extern GFont  s_font;
 extern GFont  date_font;
 extern int    s_num_offset;  // proportional gap from tick inner end to number center
+
+// Precomputed integer hand lengths — avoids soft-float on every tick
+extern int    s_hour_hand_len;
+extern int    s_minute_hand_len;
+extern int    s_second_hand_len;
+extern int    s_second_tail_len;
 
 // ============================================================================
 // GEOMETRY API

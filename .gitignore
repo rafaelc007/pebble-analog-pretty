@@ -3,3 +3,4 @@ build/*
 .lock-waf_darwin_build
 .github/skills/*
 *.png
+*.DS_Store

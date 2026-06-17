@@ -38,9 +38,9 @@ static void draw_clock_hands(GContext *ctx, struct tm *t) {
   static uint8_t hour_thickness = HOUR_HAND_WIDTH / 2;
   int32_t h_angle = degrees_to_trig_angle((t->tm_hour % 12) * 30 + (t->tm_min / 2));
   int32_t m_angle = degrees_to_trig_angle(t->tm_min * 6);
-  GPoint  h_end   = get_point_on_circle(h_angle, s_radius * HOUR_HAND_LENGTH_RATIO);
-  GPoint  m_end   = get_point_on_circle(m_angle, s_radius * MINUTE_HAND_LENGTH_RATIO);
-  GPoint  h_short = get_point_on_circle(h_angle, s_radius * HOUR_HAND_LENGTH_RATIO - hour_thickness + 1);
+  GPoint  h_end   = get_point_on_circle(h_angle, s_hour_hand_len);
+  GPoint  m_end   = get_point_on_circle(m_angle, s_minute_hand_len);
+  GPoint  h_short = get_point_on_circle(h_angle, s_hour_hand_len - hour_thickness + 1);
 
   // Draw hour hand in two passes
   graphics_context_set_stroke_color(ctx, GColorWhite);
@@ -59,8 +59,8 @@ static void draw_clock_hands(GContext *ctx, struct tm *t) {
   // Draw seconds hand only when s_show_seconds is active
   if (s_show_seconds) {
     int32_t s_angle = degrees_to_trig_angle(t->tm_sec * 6);
-    GPoint  s_end   = get_point_on_circle(s_angle, s_radius * SECOND_HAND_LENGTH_RATIO);
-    GPoint s_start = get_point_on_circle(revert_angle(s_angle), s_radius * 0.2);
+    GPoint  s_end   = get_point_on_circle(s_angle, s_second_hand_len);
+    GPoint  s_start = get_point_on_circle(revert_angle(s_angle), s_second_tail_len);
     graphics_context_set_stroke_color(ctx, WATCHFACE_THEME_COLOR);
     graphics_context_set_stroke_width(ctx, SECOND_HAND_WIDTH);
     graphics_draw_line(ctx, s_start, s_end);

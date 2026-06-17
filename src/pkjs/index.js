@@ -260,8 +260,16 @@ function fetchWeather() {
 // ---------------------------------------------------------------------------
 Pebble.addEventListener('ready', function() {
   console.log('PebbleKit JS ready');
-  // Push current settings to watch every launch so persisted prefs survive
-  sendSettings(loadSettings());
+  // Only push settings on first launch (no saved settings yet).
+  // On subsequent launches the watch already has persisted prefs, so
+  // avoid an unnecessary AppMessage wake-up every time JS starts.
+  try {
+    if (!localStorage.getItem(SETTINGS_KEY)) {
+      sendSettings(loadSettings());
+    }
+  } catch (e) {
+    sendSettings(loadSettings());
+  }
   fetchWeather();
 });
 
